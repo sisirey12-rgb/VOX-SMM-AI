@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090c13">
+  <meta name="description" content="Vox Nexus — managed marketing services and fulfillment. Demo deployment uses manual fulfillment.">
+  <title>Vox Nexus</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Vox Nexus home"><span class="brand-mark">V</span><span>VOX<span class="brand-light"> NEXUS</span></span></a>
+    <div class="topbar-right"><span class="secure"><i></i> Secure workspace</span><button id="logout" class="quiet-button hidden" type="button">Sign out</button></div>
+  </header>
+  <main class="shell">
+    <section id="auth-view" class="auth-layout">
+      <div class="intro">
+        <div class="eyebrow"><span class="pulse"></span> CREATOR OPERATIONS</div>
+        <h1>Good marketing<br><em>takes a system.</em></h1>
+        <p>Plan, brief, and track hands-on marketing work from one calm, clear workspace.</p>
+        <div class="intro-foot"><span class="tiny-line"></span><span>Built for thoughtful growth</span></div>
+      </div>
+      <div class="auth-card">
+        <div class="card-kicker">WELCOME TO VOX NEXUS</div>
+        <h2 id="auth-title">Sign in</h2>
+        <p class="muted" id="auth-copy">Use your account to open your workspace.</p>
+        <form id="auth-form" class="form-stack">
+          <label>Email address<input id="email" type="email" autocomplete="email" required placeholder="you@company.com"></label>
+          <label>Password<input id="password" type="password" autocomplete="current-password" required minlength="8" placeholder="At least 8 characters"></label>
+          <label id="full-name-wrap" class="hidden">Your name<input id="full-name" type="text" autocomplete="name" maxlength="80" placeholder="Name for your workspace"></label>
+          <button id="auth-submit" class="primary-button" type="submit">Sign in <span>↗</span></button>
+        </form>
+        <div class="auth-switch"><span id="switch-copy">New to Vox Nexus?</span><button id="switch-mode" class="text-button" type="button">Create an account</button></div>
+        <p class="fine-print">By continuing, you agree to use the workspace for services you are authorized to request.</p>
+      </div>
+    </section>
+
+    <section id="app-view" class="app-layout hidden">
+      <aside class="sidebar">
+        <div class="side-label">WORKSPACE</div>
+        <nav id="nav" aria-label="Workspace navigation">
+          <button class="nav-item active" data-view="overview"><span>⌂</span> Overview</button>
+          <button class="nav-item" data-view="services"><span>◫</span> Services</button>
+          <button class="nav-item" data-view="orders"><span>↗</span> My requests</button>
+          <button class="nav-item" data-view="wallet"><span>◇</span> Wallet</button>
+          <button class="nav-item" data-view="support"><span>◎</span> Support</button>
+          <button id="providers-nav" class="nav-item hidden" data-view="providers"><span>⌘</span> Providers</button>
+        </nav>
+        <div class="sidebar-bottom"><div class="user-avatar" id="avatar">A</div><div class="user-info"><strong id="user-name">Member</strong><span id="user-email"></span></div><span class="online-dot"></span></div>
+      </aside>
+      <div class="content">
+        <div class="content-top"><div><div class="breadcrumb">VOX NEXUS <span>/</span> <b id="crumb">OVERVIEW</b></div><h1 id="page-title">Overview</h1></div><div class="date-chip"><span class="online-dot"></span> Manual fulfillment mode</div></div>
+        <div id="notice" class="notice hidden" role="status"></div>
+        <section id="view-overview" class="view-section">
+          <div class="welcome-banner"><div><div class="card-kicker">YOUR WORKSPACE</div><h2>Good work, <span id="welcome-name">there</span>.</h2><p>Start with a service brief, then follow each request through its delivery.</p></div><div class="banner-art" aria-hidden="true"><span class="ring ring-one"></span><span class="ring ring-two"></span><span class="ring-core">V</span></div></div>
+          <div class="stat-grid"><article class="stat-card"><span class="stat-label">WALLET BALANCE</span><strong id="stat-balance">—</strong><small>Available for approved requests</small></article><article class="stat-card"><span class="stat-label">OPEN REQUESTS</span><strong id="stat-open">—</strong><small>In your current queue</small></article><article class="stat-card"><span class="stat-label">AVAILABLE SERVICES</span><strong id="stat-services">—</strong><small>Human-led marketing support</small></article></div>
+          <div class="section-heading"><div><div class="card-kicker">QUICK START</div><h2>Move an idea forward</h2></div><button class="text-button" data-go="services">Browse services ↗</button></div>
+          <div class="quick-grid"><button class="quick-card" data-go="services"><span class="quick-icon">◫</span><strong>Explore services</strong><small>Review the current menu</small></button><button class="quick-card" data-go="orders"><span class="quick-icon">＋</span><strong>Write a brief</strong><small>Submit a new work request</small></button><button class="quick-card" data-go="support"><span class="quick-icon">◎</span><strong>Get help</strong><small>Open a support conversation</small></button></div>
+          <div class="compliance-note"><span>i</span><p>Vox Nexus routes requests to manual review in this deployment. No social accounts are accessed and no engagement metrics are generated automatically.</p></div>
+        </section>
+        <section id="view-services" class="view-section hidden"><div class="section-heading"><div><div class="card-kicker">SERVICE MENU</div><h2>Human-led marketing work</h2></div><button class="outline-button" data-go="orders">Create request</button></div><div id="services-list" class="service-grid"></div></section>
+        <section id="view-orders" class="view-section hidden"><div class="section-heading"><div><div class="card-kicker">REQUESTS</div><h2>Your work queue</h2></div></div><div class="two-column"><div class="panel-card"><h3>New service request</h3><p class="muted">Choose a service and give the team enough context to get started.</p><form id="order-form" class="form-stack"><label>Service<select id="service-select" required><option value="">Choose a service</option></select></label><label>Units<input id="quantity" type="number" min="1" max="50000" value="1" required></label><div class="estimate-row"><span>Estimated cost</span><strong id="estimate">$0.00</strong></div><label>Project brief<textarea id="brief" rows="4" maxlength="3000" required placeholder="Goals, audience, references, and delivery notes…"></textarea></label><button class="primary-button" type="submit">Submit for review <span>↗</span></button></form></div><div class="panel-card"><h3>Recent requests</h3><div id="orders-list" class="list-stack"></div></div></div></section>
+        <section id="view-wallet" class="view-section hidden"><div class="wallet-hero"><div><div class="card-kicker">WALLET</div><h2 id="wallet-balance">$0.00</h2><p>Funds are managed by your workspace administrator.</p></div><div class="wallet-symbol">◇</div></div><div class="panel-card"><div class="section-heading compact"><div><div class="card-kicker">ACTIVITY</div><h3>Recent ledger entries</h3></div></div><div id="ledger-list" class="list-stack"></div></div><div class="compliance-note"><span>i</span><p>Online payments are disabled. Ask an administrator to arrange a verified wallet adjustment; the service cannot accept deposits until a payment processor is configured.</p></div></section>
+        <section id="view-support" class="view-section hidden"><div class="two-column"><div class="panel-card"><div class="card-kicker">SUPPORT</div><h2>How can we help?</h2><form id="ticket-form" class="form-stack"><label>Subject<input id="ticket-subject" maxlength="120" required placeholder="What do you need help with?"></label><label>Message<textarea id="ticket-message" rows="5" maxlength="4000" required placeholder="Share a few details…"></textarea></label><button class="primary-button" type="submit">Open support ticket <span>↗</span></button></form></div><div class="panel-card"><div class="card-kicker">YOUR TICKETS</div><h3>Recent conversations</h3><div id="tickets-list" class="list-stack"></div></div></div></section>
+        <section id="view-providers" class="view-section hidden"><div class="panel-card"><div class="card-kicker">ADMIN ONLY</div><h2>Provider registry</h2><p class="muted">This deployment ships with a manual fulfillment adapter. External provider sync is intentionally disabled.</p><div id="providers-list" class="list-stack"></div></div></section>
+        <footer class="footer"><span>VOX NEXUS</span><span>VERCEL API · SUPABASE AUTH & POSTGRES</span></footer>
+      </div>
+    </section>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

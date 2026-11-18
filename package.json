@@ -1,0 +1,19 @@
+{
+  "name": "vox-nexus-panel-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vercel-ready Vox Nexus marketing services panel with Supabase Auth and Postgres.",
+  "engines": {
+    "node": "26.x"
+  },
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^65.8.0"
+  }
+}

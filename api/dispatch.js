@@ -37,7 +37,10 @@ const routes = {
 module.exports = async function handler(req, res) {
   let pathname;
   try {
-    pathname = new URL(req.url, 'http://localhost').pathname.replace(/\/+$/, '') || '/';
+    const route = typeof req.query?.route === 'string' ? req.query.route : '';
+    pathname = route
+      ? `/api/${route.replace(/^\/+/, '').replace(/\/+$/, '')}`
+      : new URL(req.url, 'http://localhost').pathname.replace(/\/+$/, '') || '/';
   } catch {
     return error(res, 400, 'Invalid request path.');
   }

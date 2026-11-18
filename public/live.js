@@ -1,6 +1,16 @@
 (() => {
   const path = location.pathname.split('/').filter(Boolean)[0] || 'home';
   const $ = (s, root = document) => root.querySelector(s);
+  const displayText = (value, fallback = "") => {
+    if (typeof value === "string" && value.trim()) return value.trim();
+    if (value && typeof value === "object") {
+      for (const key of ["message", "msg", "error_description", "error", "details"]) {
+        const text = displayText(value[key]);
+        if (text) return text;
+      }
+    }
+    return fallback;
+  };
   const api = async (url, options = {}, retried = false) => {
     const headers = new Headers(options.headers || {});
     headers.set('Accept', 'application/json');
@@ -17,12 +27,12 @@
       }
     }
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
+    if (!response.ok) throw new Error(displayText(data.error) || displayText(data.message) || "Request failed (" + response.status + ").");
     return data;
   };
   const message = (form, text, error = false) => {
     const note = $('.form-note', form) || $('.notice', form);
-    if (note) { note.textContent = text; note.classList.toggle('error', error); note.classList.add('show'); }
+    if (note) { note.textContent = displayText(text, "The request could not be completed."); note.classList.toggle('error', error); note.classList.add('show'); }
   };
   const setSession = session => {
     if (session?.access_token) sessionStorage.setItem('vox_nexus_access', session.access_token);
@@ -39,8 +49,9 @@
       try {
         const data = await api(`/api/auth/${signup ? 'signup' : 'login'}`, { method: 'POST', body: JSON.stringify({ email: $('#email', form).value, password: $('#password', form).value, fullName: $('#name', form)?.value || '' }) });
         if (data.session?.access_token) { setSession(data.session); location.href = '/panel/'; }
-        else if (data.confirmationRequired) message(form, 'Check your email to confirm your account, then sign in.');
-        else message(form, 'Account created. Sign in to continue.');
+        else if (signup && data.confirmationRequired) message(form, 'Check your email to confirm your account, then sign in.');
+        else if (signup) message(form, 'Account created. Sign in to continue.');
+        else message(form, 'Sign-in response did not include an active session. Check the deployed login API configuration.', true);
       } catch (err) { message(form, err.message, true); }
       finally { submit.disabled = false; }
     });

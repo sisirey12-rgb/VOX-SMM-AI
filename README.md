@@ -12,7 +12,7 @@ New accounts start with a zero balance. An administrator can make a wallet adjus
 
 ## Stack
 
-- Vercel Node.js Functions under `api/`
+- One Vercel Node.js catch-all Function under `api/`, dispatching to internal route handlers
 - Supabase Auth and Postgres
 - Service-role database access remains server-side
 - Static browser client in `public/`
@@ -98,7 +98,8 @@ Signed-in API requests use `Authorization: Bearer <access_token>`. The static br
 
 ## Project layout
 
-- `api/` — Vercel Functions and shared auth/database helpers
+- `api/` — one Vercel catch-all Function, keeping the deployment under the Hobby plan limit
+- `server-routes/` — internal endpoint handlers and shared auth/database helpers
 - `public/` — browser interface
 - `supabase/migrations/` — schema, row-level security, triggers, and RPC functions
 - `.env.example` — required environment variable names only

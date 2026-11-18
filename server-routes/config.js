@@ -1,4 +1,4 @@
-const { json, method, fail } = require('../_lib/http');
+const { json, method, fail } = require('./_lib/http');
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['GET'])) return;
   try {

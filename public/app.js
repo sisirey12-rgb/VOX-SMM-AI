@@ -1,226 +1,35 @@
-(() => {
-  const $ = (selector) => document.querySelector(selector);
-  const state = { accessToken: sessionStorage.getItem('vox_nexus_access') || '', refreshToken: sessionStorage.getItem('vox_nexus_refresh') || '', profile: null, services: [], view: 'overview', authMode: 'login', toastTimer: null };
-  const titles = { overview: 'Overview', services: 'Services', orders: 'My requests', wallet: 'Wallet', support: 'Support', providers: 'Providers' };
-
-  function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
-  }
-  function money(cents) {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD' }).format((Number(cents) || 0) / 100);
-  }
-  function toast(message, isError = false) {
-    const el = $('#toast');
-    el.textContent = message;
-    el.classList.toggle('error', isError);
-    el.classList.add('show');
-    clearTimeout(state.toastTimer);
-    state.toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
-  }
-  function setSession(session) {
-    state.accessToken = session?.access_token || '';
-    state.refreshToken = session?.refresh_token || '';
-    if (state.accessToken) sessionStorage.setItem('vox_nexus_access', state.accessToken); else sessionStorage.removeItem('vox_nexus_access');
-    if (state.refreshToken) sessionStorage.setItem('vox_nexus_refresh', state.refreshToken); else sessionStorage.removeItem('vox_nexus_refresh');
-  }
-  async function refreshSession() {
-    if (!state.refreshToken) return false;
-    const response = await fetch('/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: state.refreshToken }) });
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok || !payload.session?.access_token) { setSession(null); return false; }
-    setSession(payload.session);
-    return true;
-  }
-  async function api(path, options = {}, retried = false) {
-    const headers = new Headers(options.headers || {});
-    headers.set('Accept', 'application/json');
-    if (options.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
-    if (state.accessToken) headers.set('Authorization', `Bearer ${state.accessToken}`);
-    const response = await fetch(path, { ...options, headers, cache: 'no-store' });
-    if (response.status === 401 && !retried && state.refreshToken && !path.startsWith('/api/auth/')) {
-      if (await refreshSession()) return api(path, options, true);
-    }
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.error || `Request failed (${response.status}).`);
-    return payload;
-  }
-  function showAuth() {
-    $('#auth-view').classList.remove('hidden');
-    $('#app-view').classList.add('hidden');
-    $('#logout').classList.add('hidden');
-    setSession(null);
-  }
-  function showApp() {
-    $('#auth-view').classList.add('hidden');
-    $('#app-view').classList.remove('hidden');
-    $('#logout').classList.remove('hidden');
-    const profile = state.profile || {};
-    const name = profile.full_name || profile.email?.split('@')[0] || 'there';
-    $('#user-name').textContent = name;
-    $('#user-email').textContent = profile.email || '';
-    $('#welcome-name').textContent = name;
-    $('#avatar').textContent = name.charAt(0).toUpperCase();
-    $('#providers-nav').classList.toggle('hidden', profile.role !== 'admin');
-    switchView(state.view || 'overview');
-    loadOverview();
-  }
-  function switchView(view) {
-    if (!titles[view] || (view === 'providers' && state.profile?.role !== 'admin')) return;
-    state.view = view;
-    document.querySelectorAll('.view-section').forEach((section) => section.classList.add('hidden'));
-    $(`#view-${view}`).classList.remove('hidden');
-    document.querySelectorAll('.nav-item').forEach((item) => item.classList.toggle('active', item.dataset.view === view));
-    $('#page-title').textContent = titles[view];
-    $('#crumb').textContent = titles[view].toUpperCase();
-    $('#notice').classList.add('hidden');
-    if (view === 'services') loadServices();
-    if (view === 'orders') { loadServices(); loadOrders(); }
-    if (view === 'wallet') loadWallet();
-    if (view === 'support') loadTickets();
-    if (view === 'providers') loadProviders();
-  }
-  function displayError(message) {
-    $('#notice').textContent = message;
-    $('#notice').classList.remove('hidden');
-  }
-  async function loadServices() {
-    try {
-      const result = await api('/api/services');
-      state.services = result.services || [];
-      $('#stat-services').textContent = String(state.services.length);
-      $('#services-list').innerHTML = state.services.length ? state.services.map((service) => `<article class="service-card"><span class="category">${escapeHtml(service.category)}</span><h3>${escapeHtml(service.name)}</h3><p>${escapeHtml(service.description)}</p><div class="service-meta"><span>Request size ${service.min_quantity}–${service.max_quantity}</span><strong>${money(service.rate_per_1k_cents)} / 1k</strong></div></article>`).join('') : '<div class="empty-state">No services are available yet.</div>';
-      const select = $('#service-select');
-      const selected = select.value;
-      select.innerHTML = '<option value="">Choose a service</option>' + state.services.map((service) => `<option value="${escapeHtml(service.id)}">${escapeHtml(service.name)} · ${money(service.rate_per_1k_cents)} / 1k</option>`).join('');
-      if (selected) select.value = selected;
-      updateEstimate();
-    } catch (err) { displayError(err.message); }
-  }
-  async function loadOrders() {
-    try {
-      const result = await api('/api/orders');
-      const orders = result.orders || [];
-      $('#stat-open').textContent = String(orders.filter((order) => !['completed', 'cancelled'].includes(order.status)).length);
-      $('#orders-list').innerHTML = orders.length ? orders.slice(0, 12).map((order) => `<div class="list-row"><div><strong>${escapeHtml(order.service_name)}</strong><small>${Number(order.quantity)} units · ${new Date(order.created_at).toLocaleDateString()}</small></div><span class="status-pill">${escapeHtml(order.status.replaceAll('_', ' '))}</span></div>`).join('') : '<div class="empty-state">No requests yet. Choose a service and submit a brief to get started.</div>';
-    } catch (err) { displayError(err.message); }
-  }
-  async function loadWallet() {
-    try {
-      const result = await api('/api/wallet/balance');
-      $('#wallet-balance').textContent = money(result.balanceCents);
-      $('#stat-balance').textContent = money(result.balanceCents);
-      $('#ledger-list').innerHTML = result.ledger?.length ? result.ledger.map((entry) => `<div class="list-row"><div><strong>${escapeHtml(entry.description)}</strong><small>${new Date(entry.created_at).toLocaleString()}</small></div><span class="status-pill">${money(entry.amount_cents)}</span></div>`).join('') : '<div class="empty-state">No wallet activity. Your administrator can add a verified adjustment.</div>';
-    } catch (err) { displayError(err.message); }
-  }
-  async function loadTickets() {
-    try {
-      const result = await api('/api/support/tickets');
-      $('#tickets-list').innerHTML = result.tickets?.length ? result.tickets.map((ticket) => `<div class="list-row"><div><strong>${escapeHtml(ticket.subject)}</strong><small>${new Date(ticket.created_at).toLocaleDateString()}</small></div><span class="status-pill">${escapeHtml(ticket.status)}</span></div>`).join('') : '<div class="empty-state">No support conversations yet.</div>';
-    } catch (err) { displayError(err.message); }
-  }
-  async function loadProviders() {
-    try {
-      const result = await api('/api/providers');
-      $('#providers-list').innerHTML = result.providers?.length ? result.providers.map((provider) => `<div class="list-row"><div><strong>${escapeHtml(provider.name)}</strong><small>${escapeHtml(provider.mode)} · ${escapeHtml(provider.kind)}</small></div><span class="status-pill">${provider.enabled ? 'enabled' : 'disabled'}</span></div>`).join('') : '<div class="empty-state">No provider is configured.</div>';
-    } catch (err) { displayError(err.message); }
-  }
-  async function loadOverview() {
-    try {
-      const [wallet, orders, services] = await Promise.all([api('/api/wallet/balance'), api('/api/orders'), api('/api/services')]);
-      $('#stat-balance').textContent = money(wallet.balanceCents);
-      $('#stat-open').textContent = String((orders.orders || []).filter((order) => !['completed', 'cancelled'].includes(order.status)).length);
-      $('#stat-services').textContent = String((services.services || []).length);
-    } catch (err) { displayError(err.message); }
-  }
-  function updateEstimate() {
-    const service = state.services.find((item) => item.id === $('#service-select').value);
-    const quantity = Math.max(0, Number($('#quantity').value) || 0);
-    $('#estimate').textContent = service ? money(Math.ceil(quantity * Number(service.rate_per_1k_cents) / 1000)) : '$0.00';
-  }
-  async function bootstrap() {
-    if (!state.accessToken && state.refreshToken) await refreshSession();
-    if (!state.accessToken) return;
-    try {
-      const result = await api('/api/auth/me');
-      state.profile = result.profile;
-      showApp();
-    } catch { showAuth(); }
-  }
-
-  function setAuthMode(mode) {
-    state.authMode = mode;
-    const signup = state.authMode === 'signup';
-    $('#auth-title').textContent = signup ? 'Create account' : 'Sign in';
-    $('#auth-copy').textContent = signup ? 'Start your private marketing workspace.' : 'Use your account to open your workspace.';
-    $('#full-name-wrap').classList.toggle('hidden', !signup);
-    $('#password').autocomplete = signup ? 'new-password' : 'current-password';
-    $('#auth-submit').innerHTML = signup ? 'Create account <span>↗</span>' : 'Sign in <span>↗</span>';
-    $('#switch-copy').textContent = signup ? 'Already registered?' : 'New to Vox Nexus?';
-    $('#switch-mode').textContent = signup ? 'Sign in' : 'Create an account';
-  }
-  $('#switch-mode').addEventListener('click', () => setAuthMode(state.authMode === 'login' ? 'signup' : 'login'));
-  $('#auth-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const signup = state.authMode === 'signup';
-    const button = $('#auth-submit');
-    button.disabled = true;
-    try {
-      const result = await api(signup ? '/api/auth/signup' : '/api/auth/login', { method: 'POST', body: JSON.stringify({ email: $('#email').value, password: $('#password').value, fullName: $('#full-name').value }) });
-      if (result.session?.access_token) {
-        setSession(result.session);
-        const me = await api('/api/auth/me');
-        state.profile = me.profile;
-        state.view = 'overview';
-        showApp();
-        toast(signup ? 'Your workspace is ready.' : 'Signed in successfully.');
-      } else if (result.confirmationRequired) {
-        toast('Check your email to confirm your account, then sign in.');
-        setAuthMode('login');
-      } else {
-        toast('Account created. Sign in to continue.');
-        setAuthMode('login');
-      }
-    } catch (err) { toast(err.message, true); }
-    finally { button.disabled = false; }
-  });
-  $('#logout').addEventListener('click', async () => {
-    try { if (state.accessToken) await api('/api/auth/logout', { method: 'POST' }); } catch {}
-    setSession(null); state.profile = null; state.view = 'overview'; showAuth(); toast('You are signed out.');
-  });
-  $('#nav').addEventListener('click', (event) => {
-    const item = event.target.closest('[data-view]');
-    if (item) switchView(item.dataset.view);
-  });
-  document.body.addEventListener('click', (event) => {
-    const target = event.target.closest('[data-go]');
-    if (target) switchView(target.dataset.go);
-  });
-  $('#service-select').addEventListener('change', updateEstimate);
-  $('#quantity').addEventListener('input', updateEstimate);
-  $('#order-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const service = state.services.find((item) => item.id === $('#service-select').value);
-    if (!service) return toast('Choose a service first.', true);
-    const button = event.currentTarget.querySelector('button[type=submit]');
-    button.disabled = true;
-    try {
-      await api('/api/orders', { method: 'POST', body: JSON.stringify({ serviceId: service.id, quantity: Number($('#quantity').value), brief: $('#brief').value, idempotencyKey: crypto.randomUUID() }) });
-      $('#brief').value = '';
-      await Promise.all([loadOrders(), loadWallet(), loadOverview()]);
-      toast('Request submitted for manual review.');
-    } catch (err) { toast(err.message, true); }
-    finally { button.disabled = false; }
-  });
-  $('#ticket-form').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    const button = event.currentTarget.querySelector('button[type=submit]');
-    button.disabled = true;
-    try {
-      await api('/api/support/tickets', { method: 'POST', body: JSON.stringify({ subject: $('#ticket-subject').value, message: $('#ticket-message').value }) });
-      $('#ticket-subject').value = ''; $('#ticket-message').value = '';
-      await loadTickets(); toast('Support ticket opened.');
-    } catch (err) { toast(err.message, true); }
-    finally { button.disabled = false; }
-  });
-  bootstrap();
-})();
+const routes={panel:"Overview",orders:"Orders",support:"Support",ratios:"Ratios",draw:"Curve studio",tracker:"Tracker",providers:"Providers",wallet:"Wallet"};
+const icons={panel:"⌂",orders:"▤",support:"◌",ratios:"◎",draw:"⌁",tracker:"⌖",providers:"⇄",wallet:"◈"};
+const path=location.pathname.split("/").filter(Boolean)[0]||"home";
+const nav=document.querySelector(".nav");const menu=document.querySelector(".menu-toggle");if(menu&&nav)menu.addEventListener("click",()=>nav.classList.toggle("open"));
+const root=document.querySelector("#app");
+const pageShell=(active,content)=>`<div class="app-shell"><aside class="sidebar"><a class="brand" href="/"><span class="brand-mark">V</span><span>VOX <b>NEXUS</b></span></a><div class="workspace-switch"><span class="workspace-icon">V</span><span><small>WORKSPACE</small><b>Vox Nexus Workspace</b></span><span class="chevron">⌄</span></div><div class="side-label">WORKSPACE</div><nav class="side-nav">${Object.entries(routes).map(([k,v])=>`<a class="${active===k?"active":""}" href="/${k}/"><span class="side-icon">${icons[k]}</span>${v}${k==="support"?'<i class="nav-count">2</i>':""}</a>`).join("")}</nav><div class="side-spacer"></div><div class="sidebar-help"><span class="help-icon">?</span><div><b>Need a hand?</b><small>Visit the help center</small></div><a href="/support/">↗</a></div><a class="user-card" href="/login/"><span class="user-avatar">VN</span><span><b>Vox Nexus member</b><small>Signed-in workspace</small></span><span class="chevron">⋯</span></a></aside><main class="app-main"><header class="app-top"><div class="crumb"><span>Workspace</span><b>/</b><strong>${routes[active]||"Overview"}</strong></div><div class="top-tools"><span class="system-pill"><i></i> All systems ready</span><button class="icon-button" aria-label="Notifications">♧<i class="notification-dot"></i></button><span class="top-avatar">VN</span></div></header><section class="app-content">${content}<footer class="app-foot"><span>VOX NEXUS · WORKSPACE</span><span>Live workspace data · provider delivery requires configuration</span></footer></section></main></div>`;
+const heading=(eyebrow,title,sub,actions="")=>`<div class="page-heading"><div><div class="eyebrow">${eyebrow}</div><h1>${title}</h1><p>${sub}</p></div><div class="page-actions">${actions}</div></div>`;
+const btn=(text,href="#",kind="")=>`<a class="button ${kind}" href="${href}">${text}</a>`;
+const stat=(label,value,note,icon,color="purple")=>`<article class="stat-card"><span class="stat-icon ${color}">${icon}</span><div class="stat-body"><small>${label}</small><b>${value}</b><span>${note}</span></div></article>`;
+const pill=(text,color="green")=>`<span class="status-pill ${color}"><i></i>${text}</span>`;
+function renderPage(key){
+ let body="";
+ if(key==="panel")body=`${heading("OVERVIEW","Good to see you.","Here’s a clear view of your workspace activity.",btn("＋ New campaign","/orders/"))}<div class="stats-grid">${stat("ACTIVE CAMPAIGNS","08","Across your workspace","↗")}${stat("CONNECTED PROVIDERS","—","Configure your connections","⇄","blue")}${stat("WORKSPACE SIGNAL","—","Live metrics unavailable","◌","teal")}${stat("OPEN SUPPORT TICKETS","02","One needs your reply","?","amber")}</div><div class="content-grid"><article class="panel-card wide-card"><div class="card-head"><div><small>ACTIVITY</small><h2>Campaign overview</h2></div><select aria-label="Select period"><option>Last 7 days</option><option>Last 30 days</option></select></div><div class="overview-chart"><div class="chart-labels"><span>100</span><span>75</span><span>50</span><span>25</span><span>0</span></div><div class="chart-area"><div class="chart-grid"><i></i><i></i><i></i><i></i><i></i></div><svg viewBox="0 0 700 180" preserveAspectRatio="none" aria-label="Illustrative activity chart"><defs><linearGradient id="vx-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#9b7bff" stop-opacity=".3"/><stop offset="1" stop-color="#9b7bff" stop-opacity="0"/></linearGradient></defs><path d="M0 145 C48 137 50 126 95 132 S145 105 190 112 S236 91 280 103 S334 65 375 77 S424 59 465 66 S510 38 555 47 S620 21 700 15 V180 H0Z" fill="url(#vx-fill)"/><path d="M0 145 C48 137 50 126 95 132 S145 105 190 112 S236 91 280 103 S334 65 375 77 S424 59 465 66 S510 38 555 47 S620 21 700 15" fill="none" stroke="#9b7bff" stroke-width="3"/></svg><div class="chart-days"><span>MON</span><span>TUE</span><span>WED</span><span>THU</span><span>FRI</span><span>SAT</span><span>SUN</span></div></div></div><div class="chart-foot"><span><i class="legend-violet"></i> Campaign activity</span><span>Illustrative preview</span></div></article><article class="panel-card quick-card"><div class="card-head"><div><small>QUICK LINKS</small><h2>Keep moving</h2></div></div><div class="quick-links"><a href="/orders/"><span>▤</span><b>Plan an order</b><i>→</i></a><a href="/providers/"><span>⇄</span><b>Provider connections</b><i>→</i></a><a href="/ratios/"><span>◎</span><b>Open ratio studio</b><i>→</i></a><a href="/support/"><span>◌</span><b>Contact support</b><i>→</i></a></div></article></div><div class="content-grid lower-grid"><article class="panel-card"><div class="card-head"><div><small>RECENT ACTIVITY</small><h2>Latest updates</h2></div><a href="/tracker/" class="subtle-link">View tracker →</a></div><div class="activity-list"><div><i class="activity-dot purple-dot"></i><span><b>Workspace is ready</b><small>Set up your first provider connection</small></span><time>Just now</time></div><div><i class="activity-dot blue-dot"></i><span><b>Campaign overview added</b><small>Your activity view is ready to configure</small></span><time>Today</time></div><div><i class="activity-dot teal-dot"></i><span><b>Support center available</b><small>Find help or create a ticket</small></span><time>Today</time></div></div></article><article class="panel-card"><div class="card-head"><div><small>WORKSPACE HEALTH</small><h2>All connected</h2></div>${pill("Ready")}</div><p class="card-copy">Your Vox Nexus workspace is ready for configuration. Add provider connections and set up a campaign workflow to begin.</p><a class="text-link" href="/providers/">Configure workspace <span>↗</span></a></article></div>`;
+ if(key==="orders")body=`${heading("CAMPAIGN OPERATIONS","Orders","Review campaign activity and organize new work.",btn("＋ Create order","#order-form"))}<div class="stats-grid three-stats">${stat("TOTAL ORDERS","—","Preview data only","▤")}${stat("IN PROGRESS","—","No live account linked","⌁","blue")}${stat("COMPLETED","—","Connect a provider to begin","✓","teal")}</div><article class="panel-card table-card"><div class="card-head"><div><small>ORDER ACTIVITY</small><h2>All orders</h2></div><div class="table-actions"><input class="compact-search" placeholder="Search orders" aria-label="Search orders"><select><option>All statuses</option><option>In progress</option><option>Completed</option></select></div></div><div class="empty-state"><span>▤</span><h3>No live orders connected</h3><p>When an account backend is connected, order status and campaign details will appear here.</p>${btn("Explore campaign tools","/draw/","secondary")}</div></article><article class="info-banner"><span>ⓘ</span><div><b>Preview workspace</b><p>This page is a front-end reproduction. It does not submit orders or contact third-party providers.</p></div></article>`;
+ if(key==="support")body=`${heading("HELP CENTER","Support","Keep questions, updates, and responses together.",btn("＋ New support ticket","#ticket-form"))}<div class="stats-grid three-stats">${stat("OPEN TICKETS","02","Vox Nexus member","?","amber")}${stat("WAITING ON YOU","01","Preview data","◷","blue")}${stat("RESOLVED","04","Preview data","✓","teal")}</div><article class="panel-card table-card"><div class="card-head"><div><small>YOUR REQUESTS</small><h2>Support tickets</h2></div><select><option>All tickets</option><option>Open</option><option>Resolved</option></select></div><div class="ticket-list"><a href="#ticket-form"><span class="ticket-code">#VX-2048</span><span><b>Provider connection setup</b><small>Last update · Today</small></span>${pill("Waiting on you","amber")}</a><a href="#ticket-form"><span class="ticket-code">#VX-2031</span><span><b>Workspace configuration question</b><small>Last update · Yesterday</small></span>${pill("Open","blue")}</a><a href="#ticket-form"><span class="ticket-code">#VX-1984</span><span><b>Getting started with campaign planning</b><small>Resolved · Monday</small></span>${pill("Resolved")}</a></div></article><article class="panel-card form-card" id="ticket-form"><div class="card-head"><div><small>CONTACT US</small><h2>Start a conversation</h2></div></div><form class="local-form"><label>Subject<input required placeholder="What can we help with?"></label><label>Message<textarea required rows="4" placeholder="Add a few details..."></textarea></label><button class="button" type="submit">Create ticket ↗</button><p class="form-note"></p></form></article>`;
+ if(key==="ratios")body=`${heading("CAMPAIGN STUDIO","Ratio alignment","Explore how engagement metrics can be planned together.") }<div class="ratio-layout"><article class="panel-card ratio-controls"><div class="card-head"><div><small>INPUTS</small><h2>Set a planning baseline</h2></div></div><label class="field-label">Views <input id="views-input" type="number" value="10000" min="0" step="1000"></label><label class="field-label">Likes per 1,000 views <input id="likes-rate" type="number" value="35" min="0"></label><label class="field-label">Comments per 1,000 views <input id="comments-rate" type="number" value="8" min="0"></label><label class="field-label">Shares per 1,000 views <input id="shares-rate" type="number" value="5" min="0"></label><button class="button" id="recalc-ratios" type="button">Update preview ↻</button><p class="form-note">Planning illustration only. No campaign is submitted.</p></article><article class="panel-card ratio-results"><div class="card-head"><div><small>ILLUSTRATIVE OUTPUT</small><h2>Engagement mix</h2></div><span class="demo-tag">DEMO</span></div><div class="ratio-total"><small>VIEWS BASELINE</small><b id="views-output">10,000</b></div><div class="ratio-row"><span>Likes</span><b id="likes-output">350</b><div><i style="width:75%"></i></div></div><div class="ratio-row"><span>Comments</span><b id="comments-output">80</b><div><i style="width:34%"></i></div></div><div class="ratio-row"><span>Shares</span><b id="shares-output">50</b><div><i style="width:22%"></i></div></div><div class="ratio-foot">These estimates are editable planning values, not promised delivery.</div></article></div>`;
+ if(key==="draw")body=`${heading("CAMPAIGN STUDIO","Curve studio","Shape a visual activity profile for a campaign plan.",btn("Reset curve","#draw-reset","secondary"))}<div class="studio-layout"><article class="panel-card curve-card"><div class="card-head"><div><small>ACTIVITY PROFILE</small><h2>Illustrative pacing curve</h2></div><span class="demo-tag">PREVIEW</span></div><div class="large-chart"><div class="large-grid"><i></i><i></i><i></i><i></i></div><svg id="curve-svg" viewBox="0 0 720 240" preserveAspectRatio="none"><defs><linearGradient id="curve-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#9274ff" stop-opacity=".32"/><stop offset="1" stop-color="#9274ff" stop-opacity="0"/></linearGradient></defs><path id="curve-fill-path" d="M0 205 C120 190 140 142 250 130 S390 75 475 90 S610 36 720 22 V240 H0Z" fill="url(#curve-fill)"/><path id="curve-line" d="M0 205 C120 190 140 142 250 130 S390 75 475 90 S610 36 720 22" fill="none" stroke="#a38bff" stroke-width="4"/></svg></div><div class="curve-controls"><label>Build up <input id="build-slider" type="range" min="20" max="90" value="54"><span id="build-value">54%</span></label><label>Peak level <input id="peak-slider" type="range" min="20" max="85" value="60"><span id="peak-value">60%</span></label><label>Tail length <input id="tail-slider" type="range" min="15" max="80" value="44"><span id="tail-value">44%</span></label></div></article><aside class="panel-card presets-card"><div class="card-head"><div><small>STARTING POINT</small><h2>Presets</h2></div></div><button class="preset active" data-preset="steady"><b>Steady climb</b><small>Even, measured progression</small></button><button class="preset" data-preset="wave"><b>Wave pattern</b><small>Multiple activity peaks</small></button><button class="preset" data-preset="launch"><b>Launch curve</b><small>Early lift with a longer tail</small></button><p class="form-note">Curves are local previews and are not sent to a provider.</p></aside></div>`;
+ if(key==="tracker")body=`${heading("CAMPAIGN OPERATIONS","Tracker","Follow progress and keep updates in context.") }<div class="stats-grid three-stats">${stat("TRACKED CAMPAIGNS","—","No live data connected","⌖")}${stat("ACTIVE","—","Preview only","◌","blue")}${stat("NEEDS ATTENTION","—","Connect campaign data","!","amber")}</div><article class="panel-card table-card"><div class="card-head"><div><small>CAMPAIGN STATUS</small><h2>Tracking overview</h2></div><div class="table-actions"><input class="compact-search" id="tracker-search" placeholder="Search campaigns"><select><option>All activity</option><option>Active</option><option>Complete</option></select></div></div><div class="tracker-empty empty-state"><span>⌖</span><h3>Your tracker is ready</h3><p>Connect a provider and campaign source to see live progress here.</p>${btn("Manage providers","/providers/","secondary")}</div><div class="tracker-rows" hidden><div><span>VX-1028</span><b>Campaign preview A</b>${pill("Active","blue")}<span>— / —</span></div><div><span>VX-1024</span><b>Campaign preview B</b>${pill("Complete")}<span>— / —</span></div></div></article>`;
+ if(key==="providers")body=`${heading("CONNECTIONS","Providers","Manage upstream service connections for your workspace.",btn("＋ Add provider","#provider-guide"))}<article class="info-banner"><span>ⓘ</span><div><b>Connection setup</b><p>This Vox Nexus preview doesn’t store provider credentials or connect to upstream services. Add provider details only in your own secured backend.</p></div></article><div class="provider-grid"><article class="provider-card"><div class="provider-brand brand-purple">⇄</div><div>${pill("Not connected","muted-pill")}</div><h2>Provider connection 01</h2><p>Set a name and secure API connection in the production workspace.</p><div class="provider-meta"><span>Connection state</span><b>Not configured</b></div><button class="button secondary demo-connect" type="button">View setup guide</button></article><article class="provider-card"><div class="provider-brand brand-blue">◈</div><div>${pill("Not connected","muted-pill")}</div><h2>Provider connection 02</h2><p>Keep availability, service mapping, and routing notes together.</p><div class="provider-meta"><span>Connection state</span><b>Not configured</b></div><button class="button secondary demo-connect" type="button">View setup guide</button></article><article class="provider-card add-provider" id="provider-guide"><span>＋</span><h2>Add a connection</h2><p>Provider count is configured by the workspace owner.</p><a class="text-link" href="/support/">Ask about setup ↗</a></article></div>`;
+ if(key==="wallet")body=`${heading("BILLING","Wallet","Review balance activity and payment preferences.",btn("Payment options","#payment-options","secondary"))}<div class="wallet-layout"><article class="balance-card"><small>AVAILABLE BALANCE</small><b>₹ —</b><span>Connect a live account to display balance.</span><div class="balance-actions"><button class="button" type="button" data-demo-toast>＋ Add funds</button><a class="button secondary" href="#transactions">View activity</a></div></article><article class="panel-card payment-card" id="payment-options"><div class="card-head"><div><small>PAYMENT SETTINGS</small><h2>Payment methods</h2></div></div><div class="empty-state compact"><span>◈</span><h3>No payment methods connected</h3><p>Payment details are not stored in this preview.</p></div></article></div><article class="panel-card table-card" id="transactions"><div class="card-head"><div><small>ACCOUNT ACTIVITY</small><h2>Recent transactions</h2></div></div><div class="empty-state compact"><span>▤</span><h3>No transactions to show</h3><p>Transaction history will appear when a secure backend is connected.</p></div></article>`;
+ return pageShell(key,body);
+}
+if(root&&routes[path]){document.title=`${routes[path]} — Vox Nexus`;root.innerHTML=renderPage(path)}
+if(root&&(path==="login"||path==="signup")){
+ const signup=path==="signup";document.title=`${signup?"Create account":"Sign in"} — Vox Nexus`;
+ root.innerHTML=`<main class="auth-page"><aside class="auth-aside"><a class="brand" href="/"><span class="brand-mark">V</span><span>VOX <b>NEXUS</b></span></a><div class="auth-aside-content"><div class="eyebrow">YOUR CAMPAIGN COMMAND CENTER</div><h1>${signup?"A clearer way to":"Welcome back to"}<br><span>move in sync.</span></h1><p>Bring your plans, partners, and performance signals together in one thoughtful workspace.</p></div><footer>© 2026 Vox Nexus · Workspace preview</footer></aside><section class="auth-main"><form class="auth-box"><a class="auth-back" href="/">← Back to home</a><h2>${signup?"Create your workspace":"Sign in to Vox Nexus"}</h2><p>${signup?"Start organizing your campaign operations.":"Continue to your campaign workspace."}</p><div class="notice" role="status">Sign in to access your workspace.</div>${signup?'<label for="name">Your name</label><input id="name" autocomplete="name" placeholder="Alex Morgan" required>':''}<label for="email">Work email</label><input id="email" type="email" autocomplete="email" placeholder="you@company.com" required><label for="password">Password</label><input id="password" type="password" autocomplete="${signup?"new-password":"current-password"}" placeholder="At least 8 characters" minlength="8" required>${signup?'<label class="terms"><input type="checkbox" required> I agree to the Terms and Privacy Policy.</label>':''}<button class="button" type="submit">${signup?"Create account":"Sign in"} <span>↗</span></button><p class="auth-switch">${signup?'Already have a workspace? <a href="/login/">Sign in</a>':'New to Vox Nexus? <a href="/signup/">Create an account</a>'}</p><div class="auth-note">Your credentials are sent securely to the configured Supabase Auth service.</div></form></section></main>`;
+ root.querySelector("form").addEventListener("submit",e=>{e.preventDefault();root.querySelector(".notice").classList.add("show")});
+}
+if(path==="draw"){
+ const sliders=["build","peak","tail"];const update=()=>{const b=+document.querySelector("#build-slider")?.value||54,p=+document.querySelector("#peak-slider")?.value||60,t=+document.querySelector("#tail-slider")?.value||44;document.querySelector("#build-value").textContent=b+"%";document.querySelector("#peak-value").textContent=p+"%";document.querySelector("#tail-value").textContent=t+"%";const peakX=260+(b-54)*2.3,peakY=170-p*1.55,tailY=150-t*1.55,d=`M0 205 C110 195 ${peakX-115} ${peakY+50} ${peakX} ${peakY} S${peakX+155} ${peakY-10} 500 ${tailY} S630 ${tailY-22} 720 ${tailY-30}`;document.querySelector("#curve-line").setAttribute("d",d);document.querySelector("#curve-fill-path").setAttribute("d",d+" V240 H0Z")};sliders.forEach(k=>document.querySelector(`#${k}-slider`)?.addEventListener("input",update));document.querySelectorAll(".preset").forEach(btn=>btn.addEventListener("click",()=>{document.querySelectorAll(".preset").forEach(x=>x.classList.remove("active"));btn.classList.add("active");const vals=btn.dataset.preset==="wave"?[70,50,65]:btn.dataset.preset==="launch"?[38,77,64]:[54,60,44];sliders.forEach((k,i)=>document.querySelector(`#${k}-slider`).value=vals[i]);update()}));document.querySelector("#draw-reset")?.addEventListener("click",e=>{e.preventDefault();sliders.forEach((k,i)=>document.querySelector(`#${k}-slider`).value=[54,60,44][i]);update()})
+}
+if(path==="ratios")document.querySelector("#recalc-ratios")?.addEventListener("click",()=>{const v=+document.querySelector("#views-input").value||0;document.querySelector("#views-output").textContent=v.toLocaleString();for(const [key,id] of [["likes","likes-rate"],["comments","comments-rate"],["shares","shares-rate"]])document.querySelector(`#${key}-output`).textContent=Math.round(v*(+document.querySelector(`#${id}`).value||0)/1000).toLocaleString()});
+document.querySelectorAll(".local-form").forEach(f=>f.addEventListener("submit",e=>{e.preventDefault();f.querySelector(".form-note").textContent="Preview only — this form does not send or save a ticket."}));
+document.querySelectorAll("[data-demo-toast],.demo-connect").forEach(b=>b.addEventListener("click",()=>{const n=document.createElement("div");n.className="toast";n.textContent="Demo preview — no account or provider action was sent.";document.body.append(n);setTimeout(()=>n.remove(),3000)}));
+document.querySelector("#tracker-search")?.addEventListener("input",e=>{const empty=document.querySelector(".tracker-empty");if(empty)empty.querySelector("p").textContent=e.target.value?"No matching preview campaigns.":"Connect a provider and campaign source to see live progress here."});

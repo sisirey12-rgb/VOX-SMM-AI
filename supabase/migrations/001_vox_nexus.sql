@@ -98,25 +98,16 @@ create index if not exists support_messages_ticket_created_idx on public.support
 create table if not exists public.provider_registry (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  kind text not null check (kind in ('manual','mock')),
+  kind text not null check (kind in ('manual','mock','api')),
   enabled boolean not null default false,
-  mode text not null default 'manual' check (mode in ('manual','mock')),
+  mode text not null default 'manual' check (mode in ('manual','mock','live')),
+  api_base_url text,
+  secret_env_var text,
+  priority integer not null default 100,
+  service_map jsonb not null default '{}'::jsonb,
   last_checked_at timestamptz,
   created_at timestamptz not null default now()
 );
-
-insert into public.services (name, description, category, rate_per_1k_cents, min_quantity, max_quantity)
-select * from (values
-  ('Content strategy review', 'A human-reviewed content plan for your brand and audience.', 'Strategy', 2500::bigint, 1, 10),
-  ('Short-form video edit', 'Editing and captioning for client-provided footage.', 'Creative', 12000::bigint, 1, 20),
-  ('Caption writing pack', 'Original captions drafted from your campaign brief.', 'Creative', 4000::bigint, 1, 50),
-  ('Brand profile audit', 'A written audit with actionable profile and content improvements.', 'Consulting', 8500::bigint, 1, 5)
-) as seed(name,description,category,rate_per_1k_cents,min_quantity,max_quantity)
-where not exists (select 1 from public.services limit 1);
-
-insert into public.provider_registry (name,kind,enabled,mode)
-select 'Manual fulfillment queue','manual',true,'manual'
-where not exists (select 1 from public.provider_registry);
 
 create or replace function public.handle_new_user()
 returns trigger

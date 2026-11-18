@@ -4,5 +4,5 @@ const { json, method } = require('../_lib/http');
 module.exports = async function handler(req, res) {
   if (!method(req, res, ['POST'])) return;
   if (!await requireAdmin(req, res)) return;
-  return json(res, 501, { error: 'External provider synchronization is disabled in this deployment. Configure an authorized, platform-compliant integration before enabling it.' });
+  return json(res, 501, { error: 'Provider credentials and API protocol are not included. Configure an authorized provider adapter before syncing.' });
 };

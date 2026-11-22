@@ -18,6 +18,7 @@ import {
 import "./style.css";
 import "./ultra-glass.css";
 import "./atmosphere.css";
+import "./workspace-layout.css";
 import { PartnerAdmin } from "./PartnerAdmin";
 import { Partner, StoreBanner } from "./Partner";
 import { Campaigns, Rules } from "./Controls";
@@ -33,47 +34,95 @@ import { OverviewMetrics } from "./OverviewMetrics";
 import { NotificationCenter } from "./NotificationCenter";
 import { readPalette, ThemeSettings, type Palette } from "./Theme";
 type Role = "customer" | "admin";
-const customer = [
-  ["Overview", LayoutDashboard],
-  ["Service Catalogue", Layers],
-  ["Smart Bundles", Layers],
-  ["New Campaign", ShoppingCart],
-  ["My Orders", Layers],
-  ["Wallet", Wallet],
-  ["Payments", Wallet],
-  ["Reseller", Users],
-  ["My customers", Users],
-  ["Support", Layers],
-  ["Campaigns", Layers],
-  ["Notifications", Layers],
-  ["Theme", Settings],
-  ["Settings", Settings],
-] as const;
-const admin = [
-  ["Overview", LayoutDashboard],
-  ["Orders", ShoppingCart],
-  ["Services", Layers],
-  ["Smart Bundles", Layers],
-  ["Customers", Users],
-  ["Providers", Shield],
-  ["Reseller keys", Shield],
-  ["Wallet ledger", Wallet],
-  ["Storefronts", Users],
-  ["Analytics", BarChart3],
-  ["Pricing", Wallet],
-  ["Schedule limits", Settings],
-  ["Sync history", Layers],
-  ["Worker health", Shield],
-  ["Currency", Wallet],
-  ["Website settings", Settings],
-  ["Audit", Shield],
-  ["Payments", Wallet],
-  ["Support", Layers],
-  ["Campaigns", Layers],
-  ["Notifications", Layers],
-  ["Theme", Settings],
-  ["Settings", Settings],
-] as const;
+const navigationGroups = {
+  customer: [
+    {
+      label: "Workspace",
+      pages: [
+        ["Overview", LayoutDashboard],
+        ["Notifications", Layers],
+      ],
+    },
+    {
+      label: "Orders & campaigns",
+      pages: [
+        ["Service Catalogue", Layers],
+        ["Smart Bundles", Layers],
+        ["New Campaign", ShoppingCart],
+        ["My Orders", Layers],
+        ["Campaigns", Layers],
+      ],
+    },
+    {
+      label: "Wallet & reseller",
+      pages: [
+        ["Wallet", Wallet],
+        ["Payments", Wallet],
+        ["Reseller", Users],
+        ["My customers", Users],
+      ],
+    },
+    {
+      label: "Preferences & help",
+      pages: [
+        ["Theme", Settings],
+        ["Settings", Settings],
+        ["Support", Layers],
+      ],
+    },
+  ],
+  admin: [
+    {
+      label: "Workspace",
+      pages: [
+        ["Overview", LayoutDashboard],
+        ["Analytics", BarChart3],
+        ["Notifications", Layers],
+      ],
+    },
+    {
+      label: "Catalogue & fulfillment",
+      pages: [
+        ["Orders", ShoppingCart],
+        ["Campaigns", Layers],
+        ["Services", Layers],
+        ["Smart Bundles", Layers],
+        ["Pricing", Wallet],
+        ["Schedule limits", Settings],
+        ["Providers", Shield],
+      ],
+    },
+    {
+      label: "Accounts & finance",
+      pages: [
+        ["Customers", Users],
+        ["Reseller keys", Shield],
+        ["Storefronts", Users],
+        ["Wallet ledger", Wallet],
+        ["Payments", Wallet],
+        ["Currency", Wallet],
+      ],
+    },
+    {
+      label: "Operations",
+      pages: [
+        ["Sync history", Layers],
+        ["Worker health", Shield],
+        ["Audit", Shield],
+        ["Support", Layers],
+        ["Website settings", Settings],
+      ],
+    },
+    {
+      label: "Preferences",
+      pages: [
+        ["Theme", Settings],
+        ["Settings", Settings],
+      ],
+    },
+  ],
+} as const;
+
 function App() {
   const [palette, setPalette] = useState(readPalette);
   const [animated, setAnimated] = useState(() => localStorage.getItem("voxx-theme-motion") !== "still");
@@ -139,14 +188,13 @@ function App() {
   const role = requested === "admin" && isAdmin && !accountChanged ? "admin" : "customer";
   const page = accountChanged || (requested === "admin" && !isAdmin) ||
     (["Reseller", "My customers"].includes(requestedPage) && accountRole !== "reseller") ? "Account" : requestedPage;
-  const nav =
-    role === "admin"
-      ? admin
-      : customer.filter(
-          ([label]) =>
-            !["Reseller", "My customers"].includes(label) ||
-            accountRole === "reseller",
-        );
+  const groups = navigationGroups[role].map((group) => ({
+    label: group.label,
+    pages: group.pages.filter(([label]) =>
+      !["Reseller", "My customers"].includes(label) || accountRole === "reseller",
+    ),
+  }));
+  const nav = groups.flatMap((group) => group.pages.map(([label]) => label));
   function saveAppearance(value: boolean) {
     setLight(value);
     localStorage.setItem("voxx-theme", value ? "light" : "dark");
@@ -204,19 +252,23 @@ function App() {
             <X size={20} />
           </button>
         </div>
-        <div className="nav-label">WORKSPACE</div>
         <nav aria-label="Workspace navigation">
-          {nav.map(([label, Icon]) => (
-            <button
-              key={label}
-              title={label}
-              aria-current={page === label ? "page" : undefined}
-              className={page === label ? "nav active" : "nav"}
-              onClick={() => navigate(label)}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </button>
+          {navigationGroups[role].map((group) => (
+            <div className="workspace-nav-group" key={group.label}>
+              <div className="nav-label">{group.label}</div>
+              {group.pages.map(([label, Icon]) => (
+                  <button
+                    key={label}
+                    title={label}
+                    aria-current={page === label ? "page" : undefined}
+                    className={page === label ? "nav active" : "nav"}
+                    onClick={() => navigate(label)}
+                  >
+                    <Icon size={18} aria-hidden="true" />
+                    <span>{label}</span>
+                  </button>
+              ))}
+            </div>
           ))}
         </nav>
         <div className="sidebar-bottom">
@@ -246,12 +298,12 @@ function App() {
               {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
             </button>
             <div>
-              <small>VOXX / {role === "admin" ? "ADMIN" : "CUSTOMER"} / {page}</small>
+              <small>{role === "admin" ? "Admin workspace" : "Customer workspace"}</small>
               <h1>{page}</h1>
             </div>
           </div>
           <div className="glass-top-actions">
-            <PageSearch pages={nav.map(([label]) => label)} navigate={navigate} />
+            <PageSearch pages={nav} navigate={navigate} />
             {session && <NotificationCenter key={session.user.id} userId={session.user.id} openPage={() => navigate("Notifications")} />}
             <div className="switch">
             <button
@@ -292,24 +344,26 @@ function App() {
               user={session?.user.id}
             />
           ) : page === "Overview" ? (
-            <>
-              <div className="hero">
-                <div>
-                  <h2>
-                    {role === "admin" ? "Your business, in focus." : welcome}
-                  </h2>
-                  <button
-                    onClick={() =>
-                      setPage(role === "admin" ? "Orders" : "New Campaign")
-                    }
-                  >
-                    {role === "admin" ? "View orders" : "Create campaign"}{" "}
-                    <ArrowUpRight size={16} />
-                  </button>
+            <div className="workspace-overview">
+              <div className="workspace-overview-top">
+                <div className="hero">
+                  <div>
+                    <h2>
+                      {role === "admin" ? "Your business, in focus." : welcome}
+                    </h2>
+                    <button
+                      onClick={() =>
+                        setPage(role === "admin" ? "Orders" : "New Campaign")
+                      }
+                    >
+                      {role === "admin" ? "View orders" : "Create campaign"}{" "}
+                      <ArrowUpRight size={16} />
+                    </button>
+                  </div>
+                  <img className="hero-art glass-hero-mark" src="/brand/voxx-mark.svg" alt="" />
                 </div>
-                <img className="hero-art glass-hero-mark" src="/brand/voxx-mark.svg" alt="" />
+                {session && <OverviewMetrics key={`${session.user.id}/${role}`} user={session.user.id} admin={role === "admin"} navigate={navigate} />}
               </div>
-              {session && <OverviewMetrics key={`${session.user.id}/${role}`} user={session.user.id} admin={role === "admin"} navigate={navigate} />}
               <section className="panel">
                 <div className="panel-title">
                   <h3>Recent orders</h3>
@@ -327,7 +381,7 @@ function App() {
                   manage={role === "admin"}
                 />
               </section>
-            </>
+            </div>
           ) : page === "Orders" || page === "My Orders" ? (
             <section className="panel">
               <div className="panel-title">

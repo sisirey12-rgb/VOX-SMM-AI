@@ -4,7 +4,6 @@ import {
   CalendarDays,
   ChartNoAxesCombined,
   Layers3,
-  Radio,
 } from "lucide-react";
 import { useEffect, useState, type PointerEvent } from "react";
 import { db, type Catalogue } from "./catalogue";
@@ -74,11 +73,9 @@ export function Landing({
       <main className="landing-container landing-main">
         <section className="landing-hero" aria-labelledby="landing-title">
           <div className="landing-intro">
-            <p className="landing-kicker"><Radio size={16} aria-hidden="true" /> Social media marketing workspace</p>
             <h1 id="landing-title">VOXX SMM<span>SMM Panel &amp; Smart Drip-Feed</span></h1>
-            <p className="landing-tagline">Smarter Social Media Marketing. Intelligent Scheduling. Real-Time Tracking.</p>
             <p className="landing-description">
-              Manage authorized social media marketing services, configure intelligent campaign schedules, and track verified order progress in one workspace.
+              Browse services, schedule drip-feed campaigns, and track verified order progress.
             </p>
             <div className="landing-actions">
               <button className="landing-primary" onClick={register}>Create an account <ArrowRight size={17} /></button>

@@ -1,0 +1,49 @@
+.nexus .workspace-nav-group {
+  display: grid;
+  gap: 2px;
+  padding-block: 6px;
+}
+
+.nexus .workspace-nav-group + .workspace-nav-group {
+  margin-top: 8px;
+  border-top: 1px solid var(--glass-border);
+}
+
+.nexus .workspace-nav-group .nav-label {
+  padding: 6px 10px 4px;
+  margin: 0;
+  color: var(--glass-muted);
+  letter-spacing: .06em;
+  font-size: .72rem;
+}
+
+.nexus .workspace-nav-group .nav { margin: 0; }
+.nexus .workspace-overview { display: grid; gap: 20px; }
+.nexus .workspace-overview-top { display: grid; gap: 14px; }
+.nexus .workspace-overview-top .hero { margin: 0; min-width: 0; }
+.nexus .workspace-overview-top .glass-metrics { margin: 0; }
+.nexus .workspace-overview > .panel { min-width: 0; }
+
+@media (min-width: 1080px) {
+  .nexus .workspace-overview-top:has(.glass-metrics) {
+    grid-template-columns: minmax(0, 1.3fr) minmax(270px, 1fr);
+  }
+
+  .nexus .workspace-overview-top .glass-metrics {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .nexus .workspace-overview-top .glass-metric {
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    align-items: center;
+    padding: 12px 14px;
+  }
+
+  .nexus .workspace-overview-top .glass-metric-top svg:last-child { display: none; }
+  .nexus .workspace-overview-top .glass-metric strong { font-size: 1rem; }
+}
+
+@media (min-width: 761px) {
+  .nexus.sidebar-collapsed .workspace-nav-group + .workspace-nav-group { margin-top: 5px; }
+}

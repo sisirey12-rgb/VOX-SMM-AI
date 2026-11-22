@@ -29,6 +29,7 @@ export function Bundles({ manage, user }: { manage: boolean; user?: string }) {
   const [platforms, setPlatforms] = useState<Platform[]>([]);
   const [platform, setPlatform] = useState("");
   const [parts, setParts] = useState<Component[]>([]);
+  const [bundleName, setBundleName] = useState("");
   const [editing, setEditing] = useState<Bundle | null>(null);
   const [choice, setChoice] = useState("");
   const [quotes, setQuotes] = useState<Record<string, Quote>>({});
@@ -82,6 +83,45 @@ export function Bundles({ manage, user }: { manage: boolean; user?: string }) {
   const fastFee = quote?.parts.reduce((total, part) => total + (part.plan.fastFee ?? 0), 0) ?? 0;
   const recommended = quotes.slow ? "slow" : quotes.medium ? "medium" : null;
 
+  async function draftBundle() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const selected: Component[] = [];
+      for (const service of assignable) {
+        const { data, error } = await client.from("voxx_pacing")
+          .select("batch_min")
+          .eq("service_id", service.id)
+          .eq("enabled", true)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) continue;
+        const quantity = 2 * Math.max(1, service.min, data.batch_min);
+        const { error: quoteError } = await client.rpc("voxx_paced_quote", {
+          service_number: service.id,
+          total_units: quantity,
+          pace: "medium",
+          requested_minutes: null,
+          seed: crypto.randomUUID(),
+        });
+        if (quoteError) continue;
+        selected.push({ service_id: service.id, quantity });
+        if (selected.length === 2) break;
+      }
+      if (selected.length < 2) {
+        setMessage("This platform needs at least two listed services with a valid Smart schedule.");
+        return;
+      }
+      setParts(selected);
+      if (!bundleName.trim()) setBundleName(platform + " Smart Bundle");
+      setMessage("Bundle draft created. Review the services and quantities before saving.");
+    } catch {
+      setMessage("Could not check schedule eligibility. Please try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <section className="panel form-panel catalog">
       <h2>Smart Bundles</h2>
@@ -120,9 +160,9 @@ export function Bundles({ manage, user }: { manage: boolean; user?: string }) {
             if (!result.error) refresh((value) => value + 1);
           }}>
             <h3>{editing ? "Edit bundle" : "New bundle"}</h3>
-            <label>Name <input name="name" defaultValue={editing?.name} required maxLength={100} /></label>
+            <label>Name <input name="name" value={bundleName} onChange={(event) => setBundleName(event.target.value)} required maxLength={100} /></label>
             <label>Platform
-              <select required value={platform} onChange={(event) => {
+              <select required value={platform} disabled={busy} onChange={(event) => {
                 setPlatform(event.target.value);
                 setParts([]);
               }}>
@@ -130,11 +170,16 @@ export function Bundles({ manage, user }: { manage: boolean; user?: string }) {
                 {availablePlatforms.map((item) => <option key={item}>{item}</option>)}
               </select>
             </label>
+            {!editing && platform && (
+              <button type="button" disabled={busy || assignable.length < 2} onClick={draftBundle}>
+                {busy ? "Finding services…" : "Auto-create bundle draft"}
+              </button>
+            )}
             {assignable.map((service) => {
               const part = parts.find((item) => item.service_id === service.id);
               return <div key={service.id}>
                 <label>
-                  <input type="checkbox" checked={!!part} disabled={!part && parts.length >= 6}
+                  <input type="checkbox" checked={!!part} disabled={busy || (!part && parts.length >= 6)}
                     onChange={(event) => setParts(event.target.checked
                       ? [...parts, { service_id: service.id, quantity: service.min }]
                       : parts.filter((item) => item.service_id !== service.id))} />
@@ -147,17 +192,19 @@ export function Bundles({ manage, user }: { manage: boolean; user?: string }) {
                 </label>}
               </div>;
             })}
-            <button disabled={parts.length < 2}>Save bundle</button>
+            <button disabled={busy || parts.length < 2}>Save bundle</button>
             {editing && <button type="button" onClick={() => {
               setEditing(null);
+              setBundleName("");
               setPlatform("");
               setParts([]);
             }}>New bundle</button>}
           </form>
           {bundles.map((item) => <p key={item.id}>
             {item.name} · {item.platform} · {item.components.length} services{" "}
-            <button onClick={() => {
+            <button disabled={busy} onClick={() => {
               setEditing(item);
+              setBundleName(item.name);
               setPlatform(item.platform);
               setParts(item.components);
             }}>Edit</button>

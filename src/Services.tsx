@@ -8,9 +8,11 @@ import { Loading } from "./UltraGlass";
 export function Services({
   manage = false,
   campaign = false,
+  openBundles,
 }: {
   manage?: boolean;
   campaign?: boolean;
+  openBundles?: () => void;
 }) {
   const [data, setData] = useState<Catalogue | null>(db ? null : preview);
   const [error, setError] = useState(""),
@@ -24,6 +26,7 @@ export function Services({
     [markup, setMarkup] = useState("");
   const [page, setPage] = useState(0),
     [draft, setDraft] = useState(false);
+  const [pacingService, setPacingService] = useState<number | null>(null);
   useEffect(() => {
     let active = true;
     if (db) {
@@ -77,8 +80,26 @@ export function Services({
   const [delivery, setDelivery] = useState<"single" | "schedule">(
     campaign ? "schedule" : "single",
   );
+  const serviceId = selected?.id;
+  const selectedType = selected?.type;
+  const source = data?.source;
+  const automatic = pacingService !== null && pacingService === serviceId;
+  useEffect(() => {
+    setPacingService(null);
+    if (manage || !db || source !== "live" || selectedType !== "Default" || serviceId === undefined)
+      return;
+    let active = true;
+    db.from("voxx_pacing").select("enabled").eq("service_id", serviceId).maybeSingle()
+      .then(({ data, error }) => {
+        if (active && !error && data?.enabled) {
+          setPacingService(serviceId);
+          setDelivery("schedule");
+        }
+      });
+    return () => { active = false; };
+  }, [manage, source, selectedType, serviceId]);
   const scheduled =
-    data?.source === "live" && (campaign || draft) && delivery === "schedule";
+    source === "live" && (campaign || draft || automatic) && delivery === "schedule";
   const valid =
     selected &&
     quantity !== "" &&
@@ -89,6 +110,7 @@ export function Services({
     select(s.id);
     setQuantity(String(s.min));
     setDraft(false);
+    if (s.id !== choice) setDelivery(campaign ? "schedule" : "single");
     if (window.matchMedia("(max-width:1050px)").matches)
       requestAnimationFrame(() =>
         document
@@ -117,6 +139,9 @@ export function Services({
             </div>
             <span>{data.items.length} services</span>
           </div>
+          {!manage && openBundles && (
+            <button className="glass-action" type="button" onClick={openBundles}>Browse Smart Bundles</button>
+          )}
           {manage && (
             <form
               className="panel admin-tools"
@@ -267,7 +292,7 @@ export function Services({
                     <>
                       {selected.type === "Default" &&
                         data.source === "live" &&
-                        (campaign || draft) && (
+                        (campaign || draft || automatic) && (
                           <label>
                             Order type
                             <select
@@ -279,7 +304,7 @@ export function Services({
                               }
                             >
                               <option value="schedule">
-                                Scheduled campaign
+                                {automatic ? "Automatic drip schedule" : "Scheduled campaign"}
                               </option>
                               <option value="single">Single order</option>
                             </select>
@@ -325,7 +350,7 @@ export function Services({
                           type-specific order requirements.
                         </p>
                       )}
-                      {!campaign && !draft && (
+                      {!campaign && !draft && !automatic && selected.type === "Default" && data.source === "live" && (
                         <button
                           onClick={() => {
                             setDelivery("schedule");

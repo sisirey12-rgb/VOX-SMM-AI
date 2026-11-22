@@ -14,6 +14,7 @@ import {
   ArrowUpRight,
   PanelLeftClose,
   PanelLeftOpen,
+  Palette as PaletteIcon,
 } from "lucide-react";
 import "./style.css";
 import "./ultra-glass.css";
@@ -40,7 +41,6 @@ const navigationGroups = {
       label: "Workspace",
       pages: [
         ["Overview", LayoutDashboard],
-        ["Notifications", Layers],
       ],
     },
     {
@@ -65,7 +65,6 @@ const navigationGroups = {
     {
       label: "Preferences & help",
       pages: [
-        ["Theme", Settings],
         ["Settings", Settings],
         ["Support", Layers],
       ],
@@ -77,7 +76,6 @@ const navigationGroups = {
       pages: [
         ["Overview", LayoutDashboard],
         ["Analytics", BarChart3],
-        ["Notifications", Layers],
       ],
     },
     {
@@ -116,7 +114,6 @@ const navigationGroups = {
     {
       label: "Preferences",
       pages: [
-        ["Theme", Settings],
         ["Settings", Settings],
       ],
     },
@@ -194,7 +191,7 @@ function App() {
       label !== "My customers" || accountRole === "reseller",
     ),
   }));
-  const nav = groups.flatMap((group) => group.pages.map(([label]) => label));
+  const nav = [...groups.flatMap((group) => group.pages.map(([label]) => label)), "Theme", ...(session ? ["Notifications"] : [])];
   function saveAppearance(value: boolean) {
     setLight(value);
     localStorage.setItem("voxx-theme", value ? "light" : "dark");
@@ -304,6 +301,10 @@ function App() {
           </div>
           <div className="glass-top-actions">
             <PageSearch pages={nav} navigate={navigate} />
+            <button type="button" className="glass-action" aria-label="Theme" title="Theme"
+              aria-current={page === "Theme" ? "page" : undefined} onClick={() => navigate("Theme")}>
+              <PaletteIcon size={17} aria-hidden="true" />
+            </button>
             {session && <NotificationCenter key={session.user.id} userId={session.user.id} openPage={() => navigate("Notifications")} />}
             <div className="switch">
             <button
@@ -420,6 +421,7 @@ function App() {
               key={[page, session?.user.id].join("-")}
               manage={role === "admin"}
               campaign={page === "New Campaign"}
+              openBundles={() => navigate("Smart Bundles")}
             />
           ) : (
             <Workspace

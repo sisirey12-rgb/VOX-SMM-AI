@@ -92,6 +92,13 @@ test("paced quotes, bookings, funding and dispatch spacing", async () => {
           [seed, start, JSON.stringify(accepted)],
         );
     await assert.rejects(book({ ...q, total: 0 }));
+    await assert.rejects(book(q), /Insufficient available live wallet balance/);
+    await pg.exec("reset role");
+    await pg.query(
+      "insert into voxx_ledger(owner_id,reference,mode,paise) values($1,'test-funded','live',1000000)",
+      [user],
+    );
+    await as(user);
     await book(q);
     await book(q);
     const orders = (
@@ -112,10 +119,6 @@ test("paced quotes, bookings, funding and dispatch spacing", async () => {
     await pg.query(
       "update voxx_orders set due_at=due_at-interval '2 days' where campaign_id=$1",
       [seed],
-    );
-    await pg.query(
-      "insert into voxx_ledger(owner_id,reference,mode,paise) values($1,'test-funded','live',100000)",
-      [user],
     );
     assert.equal(
       (await pg.query("select * from voxx_due()")).rows[0].id,

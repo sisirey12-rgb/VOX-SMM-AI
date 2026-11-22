@@ -351,7 +351,7 @@ export function Schedule({
               sessionStorage.removeItem(key);
               confirmOrder({ id: r.data, units: units * runs });
             }
-            tell(r.error?.message ?? "Campaign scheduled. Batches start when due and funded.");
+            tell(r.error?.message ?? "Campaign confirmed. Batches start at their scheduled times.");
           } catch (e) {
             tell((e as Error).message);
           } finally {

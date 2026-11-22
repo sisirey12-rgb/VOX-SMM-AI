@@ -368,7 +368,7 @@ export function PacedForm({
                     });
                     if (r.error) throw r.error;
                     setBooked(true);
-                    tell("Campaign " + r.data + " was scheduled. Batches start when due and funded.");
+                    tell("Campaign " + r.data + " confirmed. Batches start at their scheduled times.");
                   } catch (e) {
                     tell((e as Error).message);
                   } finally {

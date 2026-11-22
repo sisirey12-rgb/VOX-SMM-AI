@@ -55,13 +55,7 @@ test("migrations, catalogue approval, order pricing, isolation and replayed paym
         [request, price],
       );
     await assert.rejects(order(1));
-    const first = await order(10);
-    assert.equal((await order(10)).rows[0].id, first.rows[0].id);
-    await asUser(b);
-    assert.equal((await pg.query("select * from voxx_orders")).rows.length, 0);
-    await assert.rejects(
-      pg.query("select voxx_claim_order($1)", [first.rows[0].id]),
-    );
+    await assert.rejects(order(10), /Insufficient available live wallet balance/);
     await pg.exec("reset role");
     await pg.query(
       "insert into voxx_payments(id,owner_id,paise) values('order_test',$1,5000)",
@@ -79,10 +73,9 @@ test("migrations, catalogue approval, order pricing, isolation and replayed paym
     await asUser(b);
     assert.equal((await pg.query("select * from voxx_ledger")).rows.length, 0);
     await pg.exec("reset role");
-    const blocked = () =>
-      pg.query("select * from voxx_claim_order($1)", [first.rows[0].id]);
-    assert.equal((await pg.query('select * from voxx_due()')).rows.length, 0);
-    await assert.rejects(blocked());
+    await asUser(a);
+    await assert.rejects(order(10), /Insufficient available live wallet balance/);
+    await pg.exec("reset role");
     await pg.query(
       "insert into voxx_payments(id,owner_id,paise,mode) values('live_test_fixture',$1,10000,'live')",
       [a],
@@ -90,6 +83,22 @@ test("migrations, catalogue approval, order pricing, isolation and replayed paym
     await pg.query(
       "select voxx_capture('evt3','live_test_fixture','pay_fixture',10000)",
     );
+    await asUser(a);
+    const first = await order(10);
+    assert.equal((await order(10)).rows[0].id, first.rows[0].id);
+    await assert.rejects(
+      pg.query(
+        "select voxx_request_order(7,'https://example.com/second',1000,$1::uuid,100::numeric)",
+        [crypto.randomUUID()],
+      ),
+      /Insufficient available live wallet balance/,
+    );
+    await asUser(b);
+    assert.equal((await pg.query("select * from voxx_orders")).rows.length, 0);
+    await assert.rejects(
+      pg.query("select voxx_claim_order($1)", [first.rows[0].id]),
+    );
+    await pg.exec("reset role");
     assert.equal((await pg.query('select * from voxx_due()')).rows[0].id, first.rows[0].id);
     const claim = () =>
       pg.query("select * from voxx_claim_order($1)", [first.rows[0].id]);
@@ -98,6 +107,10 @@ test("migrations, catalogue approval, order pricing, isolation and replayed paym
 
     await pg.query(
       "insert into voxx_schedule_rules values(7,5,120,3,2,'Provider approval fixture only',now())",
+    );
+    await pg.query(
+      "insert into voxx_ledger(owner_id,reference,mode,paise) values($1,'campaign-test-funds','live',2200)",
+      [a],
     );
     await asUser(a);
     const campaign = crypto.randomUUID();

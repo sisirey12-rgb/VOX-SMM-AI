@@ -241,7 +241,7 @@ export function OrderForm({
             sessionStorage.removeItem(storageKey);
             setDone(true);
             setConfirmed(data);
-            setMessage("Order " + data + " was placed. Fulfillment starts when your live wallet can cover it.");
+            setMessage("Order " + data + " confirmed. Payment is covered by your live wallet.");
           } catch (e) {
             setMessage((e as Error).message);
           } finally {

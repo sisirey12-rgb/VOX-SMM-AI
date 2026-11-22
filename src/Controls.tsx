@@ -1,12 +1,37 @@
 import { useEffect, useState } from "react";
 import { PaceAdmin, PacedForm } from "./Pacing";
 import { ConfirmedProgress } from "./ProgressGraph";
-import { db, money } from "./catalogue";
+import { db, money, type Catalogue, type Service } from "./catalogue";
 export function Rules({ schedule }: { schedule: boolean }) {
   const [rows, setRows] = useState<Record<string, string | number>[]>([]),
     [msg, tell] = useState(""),
     [v, refresh] = useState(0);
   const table = schedule ? "voxx_schedule_rules" : "voxx_rules";
+  const [services, setServices] = useState<Service[]>([]);
+  const [category, setCategory] = useState("");
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const categories = [...new Set(services.map((service) => service.category))];
+  const matchingServices = services.filter((service) => service.category === category);
+  useEffect(() => {
+    if (!schedule || !db) return;
+    let active = true;
+    db.rpc("voxx_catalogue", { manage: true }).then(({ data, error }) => {
+      if (!active) return;
+      if (error) {
+        tell("Could not load the live catalogue.");
+        return;
+      }
+      const catalogue = data as Catalogue;
+      setServices(
+        catalogue.source === "live"
+          ? catalogue.items.filter((service) => service.type === "Default")
+          : [],
+      );
+    });
+    return () => {
+      active = false;
+    };
+  }, [schedule]);
   useEffect(() => {
     let active = true;
     db?.from(table)
@@ -29,9 +54,18 @@ export function Rules({ schedule }: { schedule: boolean }) {
           e.preventDefault();
           const form = e.currentTarget;
           const data = Object.fromEntries(new FormData(form));
-          const r = await db!.from(table).upsert(data);
-          tell(r.error?.message ?? "Rule saved.");
-          if (!r.error) form.reset();
+          if (schedule && selectedIds.length === 0) return;
+          const r = schedule
+            ? await db!.from(table).upsert(selectedIds.map((service_id) => ({ ...data, service_id })))
+            : await db!.from(table).upsert(data);
+          tell(
+            r.error?.message ??
+              (schedule ? `Schedule saved for ${selectedIds.length} services.` : "Rule saved."),
+          );
+          if (!r.error) {
+            form.reset();
+            setSelectedIds([]);
+          }
           refresh(v + 1);
         }}
       >
@@ -42,8 +76,47 @@ export function Rules({ schedule }: { schedule: boolean }) {
               target are permitted and billed independently. Each run places one
               order.
             </p>
+            <label>
+              Provider category
+              <select
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  setSelectedIds([]);
+                }}
+              >
+                <option value="">Choose a category</option>
+                {categories.map((item) => <option key={item}>{item}</option>)}
+              </select>
+            </label>
+            {matchingServices.length > 0 && (
+              <>
+                <label>
+                  Services
+                  <select
+                    multiple
+                    value={selectedIds.map(String)}
+                    onChange={(e) =>
+                      setSelectedIds(
+                        Array.from(e.target.selectedOptions, (option) => Number(option.value)),
+                      )
+                    }
+                  >
+                    {matchingServices.map((service) => (
+                      <option key={service.id} value={service.id}>{service.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds(matchingServices.map((service) => service.id))}
+                >
+                  Select all in category
+                </button>
+                <p>Saving replaces the schedule limits for the selected services.</p>
+              </>
+            )}
             {[
-              ["service_id", "Service ID", 1],
               ["min_minutes", "Minimum interval (minutes)", 1],
               ["max_minutes", "Maximum interval (minutes)", 1],
               ["max_runs", "Maximum runs", 1],
@@ -89,7 +162,7 @@ export function Rules({ schedule }: { schedule: boolean }) {
             </label>
           </>
         )}
-        <button>Save rule</button>
+        <button disabled={schedule && selectedIds.length === 0}>Save rule</button>
       </form>
       <p role="status">{msg}</p>
       {rows.map((r) => (

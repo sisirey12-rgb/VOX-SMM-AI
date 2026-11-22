@@ -223,17 +223,7 @@ export function PacedForm({
     };
   }, [service, units, customMinutes, pace, seed, rev]);
   const q = quotes[pace];
-  const ranked = (["slow", "medium"] as const)
-    .filter((p) => quotes[p])
-    .sort((a, b) => {
-      if (pace !== "custom") return a === "slow" ? -1 : 1;
-      return (
-        Math.abs(quotes[a]!.duration - customMinutes) -
-          Math.abs(quotes[b]!.duration - customMinutes) ||
-        quotes[a]!.total - quotes[b]!.total
-      );
-    });
-  const recommended = ranked[0];
+  const recommended = quotes.slow ? "slow" : quotes.medium ? "medium" : null;
   return (
     <section className="glass-scheduler" aria-label="Variable campaign pacing">
       <h3>Smart schedule</h3>
@@ -289,11 +279,7 @@ export function PacedForm({
                 <p key={p}>
                   <strong>
                     {p === "slow" ? "Slow" : "Medium"}
-                    {p === recommended
-                      ? pace === "custom"
-                        ? " · closest preset"
-                        : " · recommended"
-                      : ""}
+                    {p === recommended ? " · System recommended" : ""}
                   </strong>{" "}
                   · {duration(option.duration)} · {option.hourly} units/hour ·{" "}
                   {money(option.total)}
@@ -301,6 +287,20 @@ export function PacedForm({
               )
             );
           })}
+          {recommended && (
+            <div>
+              <p>
+                {recommended === "slow"
+                  ? "Slow is the more conservative preset for this quantity within the service’s limits."
+                  : "Medium is the available preset for this quantity within the service’s limits."}
+              </p>
+              {pace !== recommended && (
+                <button type="button" onClick={() => setPace(recommended)}>
+                  Use recommended pace
+                </button>
+              )}
+            </div>
+          )}
           {issue && <p role="alert">{issue}</p>}
           {q && (
             <>

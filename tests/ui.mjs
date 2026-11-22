@@ -17,14 +17,9 @@ try {
       });
     });
     await page.goto("https://voxx.test");
-    await page
-      .getByRole("heading", { name: "Overview", exact: true })
-      .waitFor();
-    if (width === 390)
-      await page.getByRole("button", { name: "Open navigation" }).click();
-    await page
-      .getByRole("button", { name: "Service Catalogue", exact: true })
-      .click();
+    await page.getByRole("heading", { name: /Run campaigns/ }).waitFor();
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    await page.getByRole("button", { name: "Browse services" }).click();
     await page.getByRole("searchbox").fill("1001");
     await page.getByRole("button", { name: /Instagram Reel views/ }).click();
     assert.equal(

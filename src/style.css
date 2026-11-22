@@ -49,15 +49,6 @@ button {
   color: #8e87a6;
   margin-top: 3px;
 }
-.logo {
-  display: grid;
-  place-items: center;
-  width: 39px;
-  height: 39px;
-  border-radius: 11px;
-  background: linear-gradient(135deg, #a45cff, #5624ad);
-  box-shadow: 0 0 30px #873cf044;
-}
 .nav-label {
   font-size: 10px;
   letter-spacing: 2px;
@@ -442,3 +433,45 @@ footer {
 .light :is(input,select,textarea) {background:#f9f6fc;color:#29153a;border-color:#bdaaca}
 .light .hero {color:#fff}
 @media(max-width:760px){.sidebar{position:fixed}.switch button{font-size:.74rem;padding:6px}.head-left h1{font-size:1.15rem}}
+
+/* Match the dashboard to the public site while keeping forms readable. */
+.app:not(.light) {
+  background:
+    radial-gradient(ellipse at 36% 0%, #55348438, transparent 45%),
+    radial-gradient(ellipse at 100% 25%, #2454632b, transparent 40%),
+    #0c0a15;
+}
+.app:not(.light) .sidebar {
+  background: #171126eb;
+  border-color: #c7a8ff29;
+  backdrop-filter: blur(16px);
+}
+.app:not(.light) header {
+  background: #1c1533a8;
+  border-color: #c7a8ff29;
+  backdrop-filter: blur(16px);
+}
+.app:not(.light) :is(.panel, .service, .stat) {
+  background: linear-gradient(140deg, #262039d6, #171426bb);
+  border-color: #a38ad440;
+  box-shadow: inset 0 1px 0 #dcc8ff16;
+}
+.app:not(.light) .hero {
+  border: 1px solid #c3a4fc65;
+  box-shadow: 0 16px 45px #7e4ec52d, inset 0 1px 0 #f3dcff42;
+}
+.app:not(.light) .switch { background: #221932c9; }
+.app .nav, .app .switch button { transition: background .18s ease, color .18s ease; }
+.app :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid #c3a7ff;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app .nav, .app .switch button { transition: none; }
+}
+
+.brand-icon {
+  flex-shrink: 0;
+  display: block;
+  filter: drop-shadow(0 0 10px #ab89ee55);
+}

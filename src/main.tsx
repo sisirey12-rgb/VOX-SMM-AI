@@ -22,6 +22,7 @@ import { Orders } from "./Orders";
 import { db } from "./catalogue";
 import { Services } from "./Services";
 import { Account, useAccount } from "./Account";
+import { Landing } from "./Landing";
 type Role = "customer" | "admin";
 const customer = [
   ["Overview", LayoutDashboard],
@@ -73,13 +74,15 @@ function App() {
         if (r.data) setWelcome(r.data.welcome);
       });
   }, []);
-  const detailId = new URLSearchParams(location.search).get("order");
-  const { session, isAdmin, accountRole } = useAccount();
+  const params = new URLSearchParams(location.search);
+  const detailId = params.get("order");
+  const { ready, session, isAdmin, accountRole } = useAccount();
+  const [register, setRegister] = useState(false);
   const [requested, setRole] = useState<Role>("customer"),
     [requestedPage, setPage] = useState(
       detailId
         ? "Order details"
-        : new URLSearchParams(location.search).has("account")
+        : params.has("account")
           ? "Account"
           : "Overview",
     ),
@@ -99,11 +102,26 @@ function App() {
     setPage("Overview");
     setMobile(false);
   }
+  function openAccount(create = false) {
+    setRole("customer");
+    setRegister(create);
+    setPage("Account");
+  }
+  if (!params.has("store") && page === "Overview" && !session) {
+    if (!ready) return <p role="status" className="content">Loading VOXX…</p>;
+    return (
+      <Landing
+        browse={() => setPage("Service Catalogue")}
+        signIn={() => openAccount()}
+        register={() => openAccount(true)}
+      />
+    );
+  }
   return (
     <div className={light ? "app light" : "app"}>
       <aside className={mobile ? "sidebar open" : "sidebar"}>
         <div className="brand">
-          <div className="logo">V</div>
+          <img className="brand-icon" src="/brand/voxx-mark.svg" alt="" width="40" height="40" />
           <div>
             VOXX<span>MARKETING PLATFORM</span>
           </div>
@@ -166,11 +184,8 @@ function App() {
             >
               {light ? "Dark" : "Light"}
             </button>
-            <button
-              className={role === "customer" ? "selected" : ""}
-              onClick={() => switchRole("customer")}
-            >
-              Customer
+            <button className={role === "customer" ? "selected" : ""} onClick={() => switchRole("customer")}>
+              {session ? "Customer" : "Home"}
             </button>
             {isAdmin && (
               <button
@@ -181,10 +196,7 @@ function App() {
               </button>
             )}
             <button
-              onClick={() => {
-                setRole("customer");
-                setPage("Account");
-              }}
+              onClick={() => openAccount()}
             >
               {session ? "Account" : "Sign in"}
             </button>
@@ -266,7 +278,7 @@ function App() {
             ["Pricing", "Schedule limits"].includes(page) ? (
             <Rules key={page} schedule={page === "Schedule limits"} />
           ) : page === "Account" || page === "Settings" ? (
-            <Account session={session} />
+            <Account key={String(register)} session={session} register={register} />
           ) : page === "Service Catalogue" ||
             page === "New Campaign" ||
             (role === "admin" && ["Services", "Providers"].includes(page)) ? (
@@ -282,7 +294,7 @@ function App() {
               user={session?.user.id ?? ""}
             />
           )}
-          <footer>© 2026 VOXX · Development preview</footer>
+          <footer>© {new Date().getFullYear()} VOXX</footer>
         </div>
       </main>
     </div>

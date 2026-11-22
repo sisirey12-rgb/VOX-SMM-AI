@@ -4,14 +4,16 @@ import { Security } from "./Security";
 import { db } from "./catalogue";
 
 export function useAccount() {
+  const [ready, setReady] = useState(!db);
   const [session, setSession] = useState<Session | null>(null),
     [adminId, setAdminId] = useState(""),
     [accountRole, setAccountRole] = useState("");
   useEffect(() => {
     if (!db) return;
-    const { data } = db.auth.onAuthStateChange((_event, next) =>
-      setSession(next),
-    );
+    const { data } = db.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      setReady(true);
+    });
     return () => data.subscription.unsubscribe();
   }, []);
   useEffect(() => {
@@ -31,14 +33,15 @@ export function useAccount() {
     };
   }, [session]);
   return {
+    ready,
     session,
     accountRole,
     isAdmin: !!session && adminId === session.user.id,
   };
 }
 
-export function Account({ session }: { session: Session | null }) {
-  const [signup, toggle] = useState(false),
+export function Account({ session, register = false }: { session: Session | null; register?: boolean }) {
+  const [signup, toggle] = useState(register),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState("");
   async function submit(e: FormEvent<HTMLFormElement>) {

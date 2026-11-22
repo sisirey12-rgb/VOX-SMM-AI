@@ -108,8 +108,6 @@ test("paced quotes, bookings, funding and dispatch spacing", async () => {
       orders.map((b) => b.gap_minutes),
       [0, ...gaps],
     );
-    await as(admin);
-    await pg.query("select voxx_campaign_state($1,'approve')", [seed]);
     await pg.exec("reset role");
     await pg.query(
       "update voxx_orders set due_at=due_at-interval '2 days' where campaign_id=$1",

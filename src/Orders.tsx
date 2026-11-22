@@ -31,6 +31,7 @@ type Order = {
   service_name: string;
   total_inr: number;
   state: string;
+  automatic_release: boolean;
   provider_status: string | null;
   target: string;
   quantity: number;
@@ -61,7 +62,7 @@ export function Orders({
         let q = db!
           .from("voxx_orders")
           .select(
-            "id,service_name,total_inr,state,provider_status,target,quantity,aftercare,campaign_id",
+            "id,service_name,total_inr,state,provider_status,target,quantity,aftercare,campaign_id,automatic_release",
           )
           .order("created_at", { ascending: false })
           .limit(detail ? 240 : 100);
@@ -155,7 +156,7 @@ export function Orders({
           {(detail || items.length === 1 ? items : []).map((o) => (
             <section key={o.id}>
               <p>
-                {o.quantity} units · {money(o.total_inr)} {items.length > 1 && <Status>{o.provider_status ?? o.state}</Status>}
+                {o.quantity} units · {money(o.total_inr)} {items.length > 1 && <Status>{o.provider_status ?? (o.automatic_release && o.state === "Awaiting review" ? "Queued" : o.state)}</Status>}
               </p>
               <small>
                 {o.target} · {o.id}
@@ -182,7 +183,7 @@ export function Orders({
                 ["partial", "canceled", "cancelled"].includes(
                   (o.provider_status ?? "").toLowerCase(),
                 ) && <OrderCredit id={o.id} />}
-              {manage && o.state === "Awaiting review" && (
+              {manage && !o.automatic_release && o.state === "Awaiting review" && (
                 <button disabled={busy} onClick={() => act("dispatch", o.id)}>
                   Approve provider spend
                 </button>
@@ -240,7 +241,7 @@ export function OrderForm({
             sessionStorage.removeItem(storageKey);
             setDone(true);
             setConfirmed(data);
-            setMessage("Order " + data + " is awaiting administrator review.");
+            setMessage("Order " + data + " was placed. Fulfillment starts when your live wallet can cover it.");
           } catch (e) {
             setMessage((e as Error).message);
           } finally {
@@ -262,7 +263,7 @@ export function OrderForm({
             }}
           />
         </label>
-        <button disabled={busy || done}>Request order for review</button>
+        <button disabled={busy || done}>Place order</button>
         {done && (
           <button
             type="button"

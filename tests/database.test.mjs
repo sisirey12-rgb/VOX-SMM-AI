@@ -81,6 +81,7 @@ test("migrations, catalogue approval, order pricing, isolation and replayed paym
     await pg.exec("reset role");
     const blocked = () =>
       pg.query("select * from voxx_claim_order($1)", [first.rows[0].id]);
+    assert.equal((await pg.query('select * from voxx_due()')).rows.length, 0);
     await assert.rejects(blocked());
     await pg.query(
       "insert into voxx_payments(id,owner_id,paise,mode) values('live_test_fixture',$1,10000,'live')",
@@ -89,6 +90,7 @@ test("migrations, catalogue approval, order pricing, isolation and replayed paym
     await pg.query(
       "select voxx_capture('evt3','live_test_fixture','pay_fixture',10000)",
     );
+    assert.equal((await pg.query('select * from voxx_due()')).rows[0].id, first.rows[0].id);
     const claim = () =>
       pg.query("select * from voxx_claim_order($1)", [first.rows[0].id]);
     assert.equal((await claim()).rows.length, 1);
@@ -119,9 +121,7 @@ test("migrations, catalogue approval, order pricing, isolation and replayed paym
     await assert.rejects(
       pg.query("select voxx_campaign_state($1,'approve')", [campaign]),
     );
-    await asUser(admin);
-    await pg.query("select voxx_campaign_state($1,'approve')", [campaign]);
-    await asUser(a);
+
     await pg.query("select voxx_campaign_state($1,'pause')", [campaign]);
     await pg.query("select voxx_campaign_state($1,'resume')", [campaign]);
     await pg.query("select voxx_campaign_state($1,'cancel')", [campaign]);

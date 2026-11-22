@@ -368,7 +368,7 @@ export function PacedForm({
                     });
                     if (r.error) throw r.error;
                     setBooked(true);
-                    tell("Campaign " + r.data + " is awaiting approval.");
+                    tell("Campaign " + r.data + " was scheduled. Batches start when due and funded.");
                   } catch (e) {
                     tell((e as Error).message);
                   } finally {

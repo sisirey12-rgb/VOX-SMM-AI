@@ -351,7 +351,7 @@ export function Schedule({
               sessionStorage.removeItem(key);
               confirmOrder({ id: r.data, units: units * runs });
             }
-            tell(r.error?.message ?? "Campaign sent for approval.");
+            tell(r.error?.message ?? "Campaign scheduled. Batches start when due and funded.");
           } catch (e) {
             tell((e as Error).message);
           } finally {
@@ -393,7 +393,7 @@ export function Schedule({
           {units} units per run · {money(perRun * runs + Number(rule.fee_inr))}{" "}
           including {money(Number(rule.fee_inr))} scheduling fee.
         </p>
-        <button disabled={busy}>Request campaign approval</button>
+        <button disabled={busy}>Schedule campaign</button>
         <p>{msg}</p>
       </form>
       {confirmed && (

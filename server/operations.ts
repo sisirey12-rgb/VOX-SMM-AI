@@ -13,19 +13,61 @@ function provider() {
   return new Provider(process.env.SMMXPERT_API_KEY!);
 }
 export async function syncCatalogue() {
-  const db = database(),
-    generation = await db.rpc("voxx_sync_start");
-  if (generation.error) throw Error("Could not initialize sync");
-  const { rows, currency } = await provider().catalogue();
-  const { data: committed, error } = await db.rpc("voxx_sync_commit", {
-    rows,
-    currency_code: currency,
-    generation: generation.data,
-  });
-  if (error || !committed)
-    throw Error("Catalogue transaction failed or superseded");
-  return { count: rows.length };
+  let stage = "supabase configuration";
+  let code: string | undefined;
+  let reason: string | undefined;
+  try {
+    const db = database();
+    stage = "start";
+    const generation = await db.rpc("voxx_sync_start");
+    if (generation.error) {
+      code = generation.error.code;
+      throw Error("Could not initialize sync");
+    }
+
+    stage = "provider configuration";
+    const api = provider();
+    stage = "provider catalogue";
+    const { rows, currency } = await api.catalogue();
+
+    stage = "commit";
+    const { data: committed, error } = await db.rpc("voxx_sync_commit", {
+      rows,
+      currency_code: currency,
+      generation: generation.data,
+    });
+    if (error) {
+      code = error.code;
+      throw Error("Catalogue transaction failed");
+    }
+    if (!committed) {
+      reason = "Snapshot superseded";
+      throw Error(reason);
+    }
+    return { count: rows.length };
+  } catch (error) {
+    if (error instanceof Error && safeSyncReasons.has(error.message))
+      reason = error.message;
+    console.error("Catalogue sync failed", {
+      stage,
+      code: code && /^[A-Z0-9]{5,8}$/.test(code) ? code : undefined,
+      reason,
+    });
+    throw error;
+  }
 }
+
+const safeSyncReasons = new Set([
+  "Provider disabled",
+  "Missing provider key",
+  "Unexpected provider URL",
+  "Provider unavailable",
+  "Provider rejected request",
+  "Missing provider currency",
+  "Empty catalogue",
+  "Invalid catalogue entry",
+]);
+
 export async function dispatch(id: string) {
   if (process.env.VOXX_ORDER_DISPATCH !== "true")
     throw Error("Dispatch disabled");

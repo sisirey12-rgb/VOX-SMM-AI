@@ -248,10 +248,11 @@ export function Workspace({ page, user, admin }: { page: string; user: string; a
       {page === "Wallet" && (
         <>
           <h3>
-            {mode === "test" ? "Test wallet" : "Wallet"}{" "}
-            {balance !== null && money(balance / 100)}
+            {mode === "test" ? "Test wallet balance" : "Wallet balance"}{" "}
+            {balance === null ? "Unavailable" : money(balance / 100)}
           </h3>
-          {mode === "test" && <p>Test funds cannot pay for live orders.</p>}
+          <p>{mode === "test" ? "Test funds cannot pay for live orders." : "Use wallet funds to pay for orders and campaigns. Deposits appear after Razorpay confirms payment."}</p>
+          <h3>Add funds</h3>
           <form onSubmit={submit}>
             <label>
               Deposit amount (INR)
@@ -264,7 +265,7 @@ export function Workspace({ page, user, admin }: { page: string; user: string; a
                 required
               />
             </label>
-            <button disabled={busy}>Open {mode} checkout</button>
+            <button disabled={busy}>{mode === "test" ? "Add test funds" : "Add funds with Razorpay"}</button>
           </form>
         </>
       )}
@@ -322,6 +323,8 @@ export function Workspace({ page, user, admin }: { page: string; user: string; a
           <button disabled={busy}>Save access</button>
         </form>
       )}
+      {page === "Payments" && <p>Payment history shows wallet top-ups made through Razorpay and their status. Use Wallet to add funds and see your balance.</p>}
+      {page === "My customers" && <p>These are accounts linked to your reseller account, such as customers who joined through your storefront.</p>}
       <p role="status">{message}</p>
       <button onClick={() => reload((v) => v + 1)}>Refresh records</button>
       {!loaded && db && user ? (

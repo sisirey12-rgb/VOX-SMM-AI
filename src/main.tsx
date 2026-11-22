@@ -54,11 +54,11 @@ const navigationGroups = {
       ],
     },
     {
-      label: "Wallet & reseller",
+      label: "Wallet & API",
       pages: [
         ["Wallet", Wallet],
         ["Payments", Wallet],
-        ["Reseller", Users],
+        ["API", Shield],
         ["My customers", Users],
       ],
     },
@@ -187,11 +187,11 @@ function App() {
   const accountChanged = !!previousUser.current && previousUser.current !== userId;
   const role = requested === "admin" && isAdmin && !accountChanged ? "admin" : "customer";
   const page = accountChanged || (requested === "admin" && !isAdmin) ||
-    (["Reseller", "My customers"].includes(requestedPage) && accountRole !== "reseller") ? "Account" : requestedPage;
+    (requestedPage === "My customers" && accountRole !== "reseller") ? "Account" : requestedPage;
   const groups = navigationGroups[role].map((group) => ({
     label: group.label,
     pages: group.pages.filter(([label]) =>
-      !["Reseller", "My customers"].includes(label) || accountRole === "reseller",
+      label !== "My customers" || accountRole === "reseller",
     ),
   }));
   const nav = groups.flatMap((group) => group.pages.map(([label]) => label));
@@ -253,7 +253,7 @@ function App() {
           </button>
         </div>
         <nav aria-label="Workspace navigation">
-          {navigationGroups[role].map((group) => (
+          {groups.map((group) => (
             <div className="workspace-nav-group" key={group.label}>
               <div className="nav-label">{group.label}</div>
               {group.pages.map(([label, Icon]) => (
@@ -395,7 +395,7 @@ function App() {
             </section>
           ) : page === "Reseller keys" && isAdmin ? (
             <PartnerAdmin />
-          ) : page === "Reseller" ? (
+          ) : page === "API" ? (
             <Partner key={session?.user.id} user={session?.user.id ?? ""} />
           ) : page === "Campaigns" ? (
             <Campaigns

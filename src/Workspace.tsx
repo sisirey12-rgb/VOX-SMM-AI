@@ -1,5 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { db, money } from "./catalogue";
+import { RecordTable } from "./RecordTable";
+import { Loading } from "./UltraGlass";
 
 type Row = Record<string, string | number | null>;
 const views: Record<string, [string, string]> = {
@@ -55,6 +57,7 @@ async function checkout(amount: number) {
   }).open();
 }
 export function Workspace({ page, user }: { page: string; user: string }) {
+  const [loaded, setLoaded] = useState(false);
   const [mode, setMode] = useState("test");
   const [rows, show] = useState<Row[]>([]),
     [message, tell] = useState(""),
@@ -118,6 +121,8 @@ export function Workspace({ page, user }: { page: string; user: string }) {
     load().catch(() => {
       if (active)
         tell("Records unavailable. Check your connection and permissions.");
+    }).finally(() => {
+      if (active) setLoaded(true);
     });
     return () => {
       active = false;
@@ -314,33 +319,12 @@ export function Workspace({ page, user }: { page: string; user: string }) {
       )}
       <p role="status">{message}</p>
       <button onClick={() => reload((v) => v + 1)}>Refresh records</button>
-      {rows.length === 0 ? (
+      {!loaded && db && user ? (
+        <Loading label="Loading records" />
+      ) : rows.length === 0 ? (
         <p>No records to display.</p>
       ) : (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                {Object.keys(rows[0]).map((k) => (
-                  <th key={k}>{k.replace(/_/g, " ")}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r, i) => (
-                <tr key={String(r.id ?? i)}>
-                  {Object.entries(r).map(([k, v]) => (
-                    <td key={k}>
-                      {k === "paise"
-                        ? money(Number(v) / 100)
-                        : String(v ?? "—")}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <RecordTable rows={rows} title={page} />
       )}
       {page === "Payments" && (
         <form

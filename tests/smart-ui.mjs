@@ -30,7 +30,8 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   let booked,
     level = 0,
-    providerCalls = 0;
+    providerCalls = 0,
+    accountRole = "admin";
   const now = Math.floor(Date.now() / 1000),
     expiry = now + 7200;
   const jwt =
@@ -65,6 +66,8 @@ try {
   await page.route("**/*", async (route) => {
     const req = route.request(),
       url = new URL(req.url());
+    if (url.hostname === "voxx.test" && url.pathname === "/api/payment")
+      return route.fulfill({ json: { mode: "test" } });
     if (url.hostname === "voxx.test")
       return route.fulfill({
         path: join(dir, url.pathname === "/" ? "/index.html" : url.pathname),
@@ -75,8 +78,14 @@ try {
     }
     let reply = null;
     const action = url.pathname.split("/").at(-1);
-    if (action === "voxx_role") reply = "admin";
-    if (action === "voxx_site") reply = { welcome: "VOXX" };
+    if (req.method() === "HEAD")
+      return route.fulfill({ headers: { "content-range": "*/0" } });
+    if (action === "voxx_role") reply = accountRole;
+    if (action === "voxx_balance") reply = 12500;
+    if (action === "voxx_notices") reply = [{ title: "Fixture notice", body: "Ready", created_at: new Date(now * 1000).toISOString() }];
+    if (action === "voxx_site") reply = url.searchParams.get("select") === "welcome"
+      ? { welcome: "VOXX" }
+      : [{ welcome: "VOXX", created_at: new Date(now * 1000).toISOString() }];
     if (action === "voxx_catalogue")
       reply = {
         source: "live",
@@ -94,7 +103,9 @@ try {
       };
     if (action === "voxx_pacing") reply = { enabled: true };
     if (action === "voxx_schedule_rules")
-      reply = { min_minutes: 3, max_minutes: 120, max_runs: 150, fee_inr: 2 };
+      reply = url.searchParams.get("select") === "*"
+        ? []
+        : { min_minutes: 3, max_minutes: 120, max_runs: 150, fee_inr: 2 };
     if (action === "voxx_paced_quote") {
       const b = req.postDataJSON(),
         mins = b.requested_minutes ?? (b.pace === "slow" ? 600 : 300);
@@ -198,6 +209,40 @@ try {
   await graph(123, 123).waitFor();
   await page.goto("https://voxx.test/");
   await graph(123, 123).waitFor();
+  await page.getByText("₹125", { exact: false }).first().waitFor();
+  await page.getByRole("button", { name: "Search pages" }).click();
+  const search = page.getByRole("dialog", { name: "Find a workspace page" });
+  await search.getByRole("searchbox").fill("notifications");
+  await search.getByRole("button", { name: "Notifications" }).click();
+  await page.getByRole("heading", { name: "Notifications", exact: true }).first().waitFor();
+  await page.getByRole("searchbox", { name: "Filter loaded records" }).fill("fixture");
+  await page.getByRole("button", { name: /View record 1/ }).click();
+  await page.getByRole("dialog", { name: "Notifications record" }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("dialog", { name: "Notifications record" }).waitFor({ state: "hidden" });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "Collapse sidebar" }).click();
+  await page.getByRole("button", { name: "Expand sidebar" }).click();
+  async function checkSidebar() {
+    const navigation = page.getByRole("navigation", { name: "Workspace navigation" });
+    const buttons = navigation.getByRole("button");
+    const labels = await buttons.allTextContents();
+    for (const [i, label] of labels.entries()) {
+      await buttons.nth(i).click();
+      await page.locator("header h1").getByText(label, { exact: true }).waitFor();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, label);
+      assert.deepEqual(errors, [], label);
+    }
+    return labels.length;
+  }
+  await page.getByRole("button", { name: "Admin", exact: true }).click();
+  const adminRoutes = await checkSidebar();
+  accountRole = "reseller";
+  await page.reload();
+  await page.getByRole("navigation", { name: "Workspace navigation" }).getByRole("button", { name: "Reseller", exact: true }).waitFor();
+  assert.equal(await page.getByRole("button", { name: "Admin", exact: true }).count(), 0);
+  const customerRoutes = await checkSidebar();
+  console.log(adminRoutes + " admin and " + customerRoutes + " customer/reseller pages rendered (fixture API).");
   assert.equal(providerCalls, 0);
   assert.deepEqual(errors, []);
   console.log(

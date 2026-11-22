@@ -7,6 +7,7 @@ import {
 } from "./ProgressGraph";
 import type { History } from "./progress";
 import { db, money } from "./catalogue";
+import { Loading, Status } from "./UltraGlass";
 export async function operation(action: string, id?: string) {
   const session = await db?.auth.getSession();
   const token = session?.data.session?.access_token;
@@ -50,6 +51,7 @@ export function Orders({
     [revision, refresh] = useState(0),
     [busy, setBusy] = useState(false);
   const [graphs, setGraphs] = useState<Record<string, History>>({});
+  const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -86,7 +88,10 @@ export function Orders({
             "Order history could not refresh. Showing the last available records.",
           );
       } finally {
-        if (active) timer = setTimeout(tick, 10000);
+        if (active) {
+          setLoaded(true);
+          timer = setTimeout(tick, 10000);
+        }
       }
     }
     void tick();
@@ -134,10 +139,11 @@ export function Orders({
           Sync provider statuses
         </button>
       )}
-      {!orders.length && <p>No orders to display.</p>}
+      {!loaded && db && <Loading label="Loading order history" />}
+      {loaded && !orders.length && !message && <p>No orders to display.</p>}
       {[...groups].map(([id, items]) => (
         <article className="panel" key={id}>
-          <h3>{items[0].service_name}</h3>
+          <div className="glass-order-heading"><h3>{items[0].service_name}</h3>{items.length === 1 && <Status>{items[0].provider_status ?? items[0].state}</Status>}</div>
           {graphs[id] && (
             <ProgressGraph history={graphs[id]} expanded={!!detail} />
           )}
@@ -149,8 +155,7 @@ export function Orders({
           {(detail || items.length === 1 ? items : []).map((o) => (
             <section key={o.id}>
               <p>
-                {o.quantity} units · {money(o.total_inr)} ·{" "}
-                {o.provider_status ?? o.state}
+                {o.quantity} units · {money(o.total_inr)} {items.length > 1 && <Status>{o.provider_status ?? o.state}</Status>}
               </p>
               <small>
                 {o.target} · {o.id}

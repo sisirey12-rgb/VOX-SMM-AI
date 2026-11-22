@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   LayoutDashboard,
@@ -12,8 +12,12 @@ import {
   Menu,
   X,
   ArrowUpRight,
+  Bell,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import "./style.css";
+import "./ultra-glass.css";
 import { PartnerAdmin } from "./PartnerAdmin";
 import { Partner, StoreBanner } from "./Partner";
 import { Campaigns, Rules } from "./Controls";
@@ -23,6 +27,8 @@ import { db } from "./catalogue";
 import { Services } from "./Services";
 import { Account, useAccount } from "./Account";
 import { Landing } from "./Landing";
+import { GlassDialog, PageSearch } from "./UltraGlass";
+import { OverviewMetrics } from "./OverviewMetrics";
 type Role = "customer" | "admin";
 const customer = [
   ["Overview", LayoutDashboard],
@@ -87,6 +93,21 @@ function App() {
           : "Overview",
     ),
     [mobile, setMobile] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const mobileToggle = useRef<HTMLButtonElement>(null);
+  const mobileClose = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!mobile) return;
+    mobileClose.current?.focus();
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setMobile(false);
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      mobileToggle.current?.focus();
+    };
+  }, [mobile]);
   const role = requested === "admin" && isAdmin ? "admin" : "customer";
   const page = requested === "admin" && !isAdmin ? "Account" : requestedPage;
   const nav =
@@ -107,6 +128,10 @@ function App() {
     setRegister(create);
     setPage("Account");
   }
+  function navigate(destination: string) {
+    setPage(destination);
+    setMobile(false);
+  }
   if (!params.has("store") && page === "Overview" && !session) {
     if (!ready) return <p role="status" className="content">Loading VOXX…</p>;
     return (
@@ -118,15 +143,18 @@ function App() {
     );
   }
   return (
-    <div className={light ? "app light" : "app"}>
-      <aside className={mobile ? "sidebar open" : "sidebar"}>
+    <div className={`app nexus${light ? " light" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>
+      <a className="glass-skip" href="#workspace-content">Skip to content</a>
+      {mobile && <button className="glass-backdrop" aria-label="Dismiss navigation" onClick={() => setMobile(false)} />}
+      <aside id="workspace-navigation" className={mobile ? "sidebar open" : "sidebar"}>
         <div className="brand">
           <img className="brand-icon" src="/brand/voxx-mark.svg" alt="" width="40" height="40" />
-          <div>
+          <div className="glass-brand-text">
             VOXX<span>MARKETING PLATFORM</span>
           </div>
           <button
             aria-label="Close navigation"
+            ref={mobileClose}
             className="mobile-close"
             onClick={() => setMobile(false)}
           >
@@ -134,24 +162,23 @@ function App() {
           </button>
         </div>
         <div className="nav-label">WORKSPACE</div>
-        <nav>
+        <nav aria-label="Workspace navigation">
           {nav.map(([label, Icon]) => (
             <button
               key={label}
+              title={label}
+              aria-current={page === label ? "page" : undefined}
               className={page === label ? "nav active" : "nav"}
-              onClick={() => {
-                setPage(label);
-                setMobile(false);
-              }}
+              onClick={() => navigate(label)}
             >
               <Icon size={18} />
-              {label}
+              <span>{label}</span>
             </button>
           ))}
         </nav>
         <div className="sidebar-bottom">
           <div className="user-avatar">VX</div>
-          <div>
+          <div className="glass-identity">
             <strong>{session?.user.email ?? "Guest preview"}</strong>
             <small>
               {role === "admin" ? "Administrator" : "Customer workspace"}
@@ -159,22 +186,31 @@ function App() {
           </div>
         </div>
       </aside>
-      <main>
+      <main className="glass-main">
         <header>
           <div className="head-left">
             <button
               aria-label="Open navigation"
+              ref={mobileToggle}
+              aria-controls="workspace-navigation"
+              aria-expanded={mobile}
               className="mobile-menu"
               onClick={() => setMobile(true)}
             >
               <Menu size={22} />
             </button>
+            <button className="glass-action glass-sidebar-toggle" type="button" aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"} aria-controls="workspace-navigation" aria-expanded={!collapsed} onClick={() => setCollapsed(!collapsed)}>
+              {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
             <div>
-              <small>VOXX / {role === "admin" ? "ADMIN" : "CUSTOMER"}</small>
+              <small>VOXX / {role === "admin" ? "ADMIN" : "CUSTOMER"} / {page}</small>
               <h1>{page}</h1>
             </div>
           </div>
-          <div className="switch">
+          <div className="glass-top-actions">
+            <PageSearch pages={nav.map(([label]) => label)} navigate={navigate} />
+            {session && <button type="button" className="glass-action glass-bell" aria-label="View notifications" onClick={() => navigate("Notifications")}><Bell size={17} /></button>}
+            <div className="switch">
             <button
               aria-label="Switch colour theme"
               onClick={() => {
@@ -195,14 +231,18 @@ function App() {
                 Admin
               </button>
             )}
-            <button
-              onClick={() => openAccount()}
-            >
-              {session ? "Account" : "Sign in"}
-            </button>
+              {session ? (
+                <GlassDialog title="Your VOXX account" trigger="Account">
+                  {(close) => <div className="glass-dialog-body">
+                    <p>{session.user.email}</p>
+                    <button type="button" className="glass-action" onClick={() => { close(); openAccount(); }}>Account and security</button>
+                  </div>}
+                </GlassDialog>
+              ) : <button onClick={() => openAccount()}>Sign in</button>}
+            </div>
           </div>
         </header>
-        <div className="content">
+        <div className="content" id="workspace-content" tabIndex={-1}>
           <StoreBanner user={session?.user.id ?? ""} />
           {page === "Order details" && detailId ? (
             <Orders
@@ -233,8 +273,9 @@ function App() {
                     <ArrowUpRight size={16} />
                   </button>
                 </div>
-                <div className="hero-art">V</div>
+                <img className="hero-art glass-hero-mark" src="/brand/voxx-mark.svg" alt="" />
               </div>
+              {session && <OverviewMetrics key={`${session.user.id}/${role}`} user={session.user.id} admin={role === "admin"} navigate={navigate} />}
               <section className="panel">
                 <div className="panel-title">
                   <h3>Recent orders</h3>

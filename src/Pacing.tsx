@@ -235,7 +235,7 @@ export function PacedForm({
     });
   const recommended = ranked[0];
   return (
-    <section aria-label="Variable campaign pacing">
+    <section className="glass-scheduler" aria-label="Variable campaign pacing">
       <h3>Smart schedule</h3>
       <p>
         Choose how long VOXX spreads the order submissions. Times below are

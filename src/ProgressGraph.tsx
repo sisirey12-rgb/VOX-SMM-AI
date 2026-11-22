@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { db } from "./catalogue";
 import { summarize, type History, type Point } from "./progress";
+import { Status } from "./UltraGlass";
 export function ProgressGraph({
   history,
   expanded = false,
@@ -39,11 +40,13 @@ export function ProgressGraph({
     });
   return (
     <section aria-label="Recorded order progress" className="order-progress">
-      <p>
-        <strong>{result.status}</strong> · {last.completed.toLocaleString()} /{" "}
-        {history.requested.toLocaleString()} units fulfilled (
-        {pct(result.fulfilledPercent)})
-      </p>
+      <div className="glass-order-heading"><strong>Order progress</strong><Status>{result.status}</Status></div>
+      <dl className="glass-progress-metrics">
+        <div><dt>Requested</dt><dd>{history.requested.toLocaleString()}</dd></div>
+        <div><dt>Submitted</dt><dd>{last.submitted.toLocaleString()}</dd></div>
+        <div><dt>Verified fulfilled</dt><dd>{last.completed.toLocaleString()}</dd></div>
+        <div><dt>Remaining</dt><dd>{Math.max(0, history.requested - last.completed).toLocaleString()}</dd></div>
+      </dl>
       <svg
         viewBox={"0 0 " + W + " " + H}
         role="img"
@@ -108,7 +111,7 @@ export function ProgressGraph({
         <span style={{ color: "#36c99e" }}>●</span> Completed {last.completed}
       </p>
       <p>
-        Updated{" "}
+        Last recorded update{" "}
         <time dateTime={new Date(last.time).toISOString()}>
           {stamp(last.time)}
         </time>
@@ -140,6 +143,16 @@ export function ProgressGraph({
               original orders.
             </p>
           )}
+          <details className="glass-timeline">
+            <summary>Recorded event history ({history.events.length})</summary>
+            {history.events.length ? <ol>{history.events.map((event, index) => (
+              <li key={event.batch + event.time + index}>
+                <Status>{event.status || event.stage}</Status>
+                <time dateTime={event.time}>{stamp(Date.parse(event.time))}</time>
+                <small>{event.submitted} submitted · {event.accepted} accepted · {event.completed} verified fulfilled</small>
+              </li>
+            ))}</ol> : <p>No events recorded yet.</p>}
+          </details>
         </>
       )}
     </section>

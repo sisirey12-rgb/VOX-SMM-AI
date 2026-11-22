@@ -3,6 +3,7 @@ import "./catalogue.css";
 import { Schedule } from "./Controls";
 import { operation, OrderForm } from "./Orders";
 import { db, money, preview, type Service, type Catalogue } from "./catalogue";
+import { Loading } from "./UltraGlass";
 
 export function Services({
   manage = false,
@@ -171,7 +172,7 @@ export function Services({
                   />
                 </label>
                 <label>
-                  Category
+                  Platform or category
                   <select
                     value={category}
                     onChange={(e) => {
@@ -199,7 +200,7 @@ export function Services({
                 >
                   <div>
                     <small>
-                      {s.category} · #{s.id}
+                      {s.category} · #{s.id} · {s.type}
                       {s.visible === false ? " · Hidden" : ""}
                     </small>
                     <strong>{s.name}</strong>
@@ -367,7 +368,7 @@ export function Services({
           </div>
         </>
       ) : (
-        !error && <p role="status">Loading catalogue…</p>
+        !error && <Loading label="Loading catalogue" />
       )}
     </div>
   );

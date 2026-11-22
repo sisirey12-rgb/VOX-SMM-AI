@@ -19,7 +19,7 @@ type Quote = {
     service_id: number;
     name: string;
     quantity: number;
-    plan: { batches: { offset: number; quantity: number }[] };
+    plan: { fastFee?: number; batches: { offset: number; quantity: number }[] };
   }[];
 };
 
@@ -79,6 +79,7 @@ export function Bundles({ manage, user }: { manage: boolean; user?: string }) {
   );
   const availablePlatforms = [...new Set(platforms.map((item) => item.platform))].sort();
   const quote = quotes[pace];
+  const fastFee = quote?.parts.reduce((total, part) => total + (part.plan.fastFee ?? 0), 0) ?? 0;
   const recommended = quotes.slow ? "slow" : quotes.medium ? "medium" : null;
 
   return (
@@ -240,6 +241,7 @@ export function Bundles({ manage, user }: { manage: boolean; user?: string }) {
                 </option>)}
               </select>
             </label>
+            {fastFee > 0 && <p>Includes {money(fastFee)} in faster pace fees.</p>}
             <p>{money(quote.total)} total · {quote.duration} planned minutes</p>
             {quote.parts.map((part) => <details key={part.service_id}>
               <summary>{part.name} · {part.quantity} units · {part.plan.batches.length} batches</summary>

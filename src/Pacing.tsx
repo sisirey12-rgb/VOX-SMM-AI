@@ -13,7 +13,7 @@ type Policy = {
   qty_variation: number;
   time_variation: number;
   max_duration: number;
-  hourly_fee: number;
+  fast_pace_fee: number;
 };
 const fields: [
   Exclude<keyof Policy, "enabled" | "service_id" | "provider_capacity">,
@@ -29,7 +29,7 @@ const fields: [
   ["qty_variation", "Batch size variation (%)", 0, 90],
   ["time_variation", "Interval variation (%)", 0, 90],
   ["max_duration", "Longest campaign (minutes)", 1, 525600],
-  ["hourly_fee", "Scheduling price per hour (INR)", 0, 99999999],
+  ["fast_pace_fee", "Faster pace fee per campaign (INR)", 0, 99999999],
 ];
 export function PaceAdmin({ service }: { service: number }) {
   const [config, setConfig] = useState<Policy | null>(null),
@@ -90,8 +90,8 @@ export function PaceAdmin({ service }: { service: number }) {
         >
           <p>
             These limits work alongside the service’s verified interval and run
-            limits. The campaign fee is charged once. The hourly fee uses the
-            customer’s selected duration.
+            limits. VOXX adds the faster pace fee once when the plan exceeds the
+            the effective Slow rate.
           </p>
           <label>
             <input
@@ -120,9 +120,9 @@ export function PaceAdmin({ service }: { service: number }) {
                 name={key}
                 min={min}
                 max={max}
-                step={key === "hourly_fee" ? ".01" : "1"}
+                step={key === "fast_pace_fee" ? ".01" : "1"}
                 defaultValue={
-                  config?.[key] ?? (key === "hourly_fee" ? 0 : undefined)
+                  config?.[key] ?? (key === "fast_pace_fee" ? 0 : undefined)
                 }
               />
             </label>
@@ -143,7 +143,7 @@ type Quote = {
   rate: number;
   subtotal: number;
   baseFee: number;
-  hourFee: number;
+  fastFee?: number;
   samples: number;
   capacity: number | null;
   fee: number;
@@ -313,8 +313,8 @@ export function PacedForm({
               </p>
               <p>
                 Service rate {money(q.rate)} per 1,000 · service subtotal{" "}
-                {money(q.subtotal)}. Scheduling {money(q.baseFee)} +{" "}
-                {money(q.hourFee)}/hour = {money(q.fee)}.
+                {money(q.subtotal)}. Scheduling fee {money(q.baseFee)}.
+                {!!q.fastFee && <> Faster pace fee {money(q.fastFee)}.</>}
               </p>
               <strong>Total {money(q.total)}</strong>
               <p>

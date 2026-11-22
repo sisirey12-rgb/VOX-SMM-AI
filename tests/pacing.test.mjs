@@ -40,7 +40,7 @@ test("paced quotes, bookings, funding and dispatch spacing", async () => {
     ]);
     await as(admin);
     await pg.exec(
-      "select voxx_price('live',5,null,true);insert into voxx_schedule_rules values(5,3,120,150,2,'Verified fixture for independent orders',now());update voxx_pacing set slow_hourly=100,medium_hourly=200,target_gap=30,batch_min=5,batch_max=200,qty_variation=35,time_variation=45,max_duration=20000,hourly_fee=3 where service_id=5",
+      "select voxx_price('live',5,null,true);insert into voxx_schedule_rules values(5,3,120,150,2,'Verified fixture for independent orders',now());update voxx_pacing set slow_hourly=100,medium_hourly=200,target_gap=30,batch_min=5,batch_max=200,qty_variation=35,time_variation=45,max_duration=20000,hourly_fee=3,fast_pace_fee=3 where service_id=5",
     );
     await as(user);
     const quote = async (qty, mode = "slow", minutes = null, key = seed) =>
@@ -54,11 +54,17 @@ test("paced quotes, bookings, funding and dispatch spacing", async () => {
       ).rows[0].q;
     const q = await quote(1000);
     assert.equal(q.duration, 600);
-    assert.equal(q.fee, 32);
-    assert.equal(q.total, 132);
+    assert.equal(q.fee, 2);
+    assert.equal(q.total, 102);
     assert.deepEqual(q, await quote(1000));
     assert.equal((await quote(2000)).duration, 1200);
-    assert.equal((await quote(1000, "medium")).duration, 300);
+    const faster = await quote(1000, "medium");
+    assert.equal(faster.duration, 300);
+    assert.equal(faster.fastFee, 3);
+    assert.equal(faster.total, 105);
+    assert.equal((await quote(1000, "custom", 650)).fastFee, 0);
+    assert.equal((await quote(1000, "custom", 481)).fastFee, 3);
+    assert.equal((await quote(1003)).subtotal, (await quote(1003, "medium")).subtotal);
     assert.equal((await quote(1000, "custom", 481)).duration, 481);
     await assert.rejects(quote(1000, "custom", 100));
     const gaps = q.batches

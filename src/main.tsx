@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import "./style.css";
 import "./ultra-glass.css";
+import "./atmosphere.css";
 import { PartnerAdmin } from "./PartnerAdmin";
 import { Partner, StoreBanner } from "./Partner";
 import { Campaigns, Rules } from "./Controls";
@@ -30,6 +31,7 @@ import { Landing } from "./Landing";
 import { GlassDialog, PageSearch } from "./UltraGlass";
 import { OverviewMetrics } from "./OverviewMetrics";
 import { NotificationCenter } from "./NotificationCenter";
+import { readPalette, ThemeSettings, type Palette } from "./Theme";
 type Role = "customer" | "admin";
 const customer = [
   ["Overview", LayoutDashboard],
@@ -44,6 +46,7 @@ const customer = [
   ["Support", Layers],
   ["Campaigns", Layers],
   ["Notifications", Layers],
+  ["Theme", Settings],
   ["Settings", Settings],
 ] as const;
 const admin = [
@@ -68,9 +71,12 @@ const admin = [
   ["Support", Layers],
   ["Campaigns", Layers],
   ["Notifications", Layers],
+  ["Theme", Settings],
   ["Settings", Settings],
 ] as const;
 function App() {
+  const [palette, setPalette] = useState(readPalette);
+  const [animated, setAnimated] = useState(() => localStorage.getItem("voxx-theme-motion") !== "still");
   const [light, setLight] = useState(
     localStorage.getItem("voxx-theme") === "light",
   );
@@ -141,6 +147,18 @@ function App() {
             !["Reseller", "My customers"].includes(label) ||
             accountRole === "reseller",
         );
+  function saveAppearance(value: boolean) {
+    setLight(value);
+    localStorage.setItem("voxx-theme", value ? "light" : "dark");
+  }
+  function savePalette(value: Palette) {
+    setPalette(value);
+    localStorage.setItem("voxx-palette", value);
+  }
+  function saveMotion(value: boolean) {
+    setAnimated(value);
+    localStorage.setItem("voxx-theme-motion", value ? "animated" : "still");
+  }
   function switchRole(r: Role) {
     setRole(r);
     setPage("Overview");
@@ -167,7 +185,8 @@ function App() {
     );
   }
   return (
-    <div className={`app nexus${light ? " light" : ""}${collapsed ? " sidebar-collapsed" : ""}`}>
+    <div className={`app nexus${light ? " light" : ""}${collapsed ? " sidebar-collapsed" : ""}`} data-palette={palette} data-motion={animated ? "animated" : "still"}>
+      <div className="theme-atmosphere" aria-hidden="true" />
       <a className="glass-skip" href="#workspace-content">Skip to content</a>
       {mobile && <button className="glass-backdrop" aria-label="Dismiss navigation" onClick={() => setMobile(false)} />}
       <aside id="workspace-navigation" className={mobile ? "sidebar open" : "sidebar"}>
@@ -237,10 +256,7 @@ function App() {
             <div className="switch">
             <button
               aria-label="Switch colour theme"
-              onClick={() => {
-                setLight(!light);
-                localStorage.setItem("voxx-theme", light ? "dark" : "light");
-              }}
+              onClick={() => saveAppearance(!light)}
             >
               {light ? "Dark" : "Light"}
             </button>
@@ -347,6 +363,9 @@ function App() {
           ) : role === "admin" &&
             ["Pricing", "Schedule limits"].includes(page) ? (
             <Rules key={page} schedule={page === "Schedule limits"} />
+          ) : page === "Theme" ? (
+            <ThemeSettings palette={palette} light={light} animated={animated}
+              setPalette={savePalette} setLight={saveAppearance} setAnimated={saveMotion} />
           ) : page === "Account" || page === "Settings" ? (
             <Account key={`${register}/${userId ?? "guest"}`} session={session} register={register} role={accountRole} wallet={() => { setRole("customer"); navigate("Wallet"); }} onSignedIn={() => navigate("Overview")} />
           ) : page === "Smart Bundles" ? (

@@ -1,0 +1,158 @@
+.nexus[data-palette] {
+  --theme-hue: 268;
+  --theme-bg: hsl(var(--theme-hue) 30% 8%);
+  --theme-panel: hsl(var(--theme-hue) 28% 16% / .76);
+  --theme-panel-deep: hsl(var(--theme-hue) 30% 10% / .84);
+  --theme-edge: hsl(var(--theme-hue) 65% 78% / .27);
+  --theme-glint: hsl(var(--theme-hue) 75% 88% / .13);
+  --theme-shadow: hsl(var(--theme-hue) 45% 4% / .54);
+  --theme-halo: hsl(var(--theme-hue) 77% 54% / .33);
+  --theme-halo-near: hsl(calc(var(--theme-hue) + 12) 71% 58% / .23);
+  --theme-particle: hsl(var(--theme-hue) 76% 86% / .67);
+  --glass-accent: hsl(var(--theme-hue) 78% 83%);
+  --glass-border: var(--theme-edge);
+  --glass-surface: hsl(var(--theme-hue) 30% 15% / .97);
+  --glass-control: hsl(var(--theme-hue) 29% 22%);
+  --glass-shadow: 0 18px 42px var(--theme-shadow);
+  position: relative;
+  isolation: isolate;
+  background: var(--theme-bg);
+}
+
+.nexus[data-palette="ocean"] { --theme-hue: 213; }
+.nexus[data-palette="jade"] { --theme-hue: 164; }
+.nexus[data-palette="amber"] { --theme-hue: 30; }
+
+.nexus.light[data-palette] {
+  --theme-bg: hsl(var(--theme-hue) 37% 94%);
+  --theme-panel: hsl(var(--theme-hue) 78% 99% / .76);
+  --theme-panel-deep: hsl(var(--theme-hue) 45% 94% / .85);
+  --theme-edge: hsl(var(--theme-hue) 37% 42% / .27);
+  --theme-glint: hsl(var(--theme-hue) 74% 99% / .83);
+  --theme-shadow: hsl(var(--theme-hue) 32% 37% / .14);
+  --theme-halo: hsl(var(--theme-hue) 72% 71% / .45);
+  --theme-halo-near: hsl(calc(var(--theme-hue) + 12) 70% 76% / .39);
+  --theme-particle: hsl(var(--theme-hue) 58% 39% / .51);
+  --glass-accent: hsl(var(--theme-hue) 61% 34%);
+  --glass-ink: hsl(var(--theme-hue) 32% 17%);
+  --glass-muted: hsl(var(--theme-hue) 24% 34%);
+  --glass-surface: hsl(var(--theme-hue) 65% 98%);
+  --glass-control: hsl(var(--theme-hue) 43% 93%);
+}
+
+.theme-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.theme-atmosphere::before,
+.theme-atmosphere::after {
+  content: "";
+  position: absolute;
+  inset: -12%;
+}
+
+.theme-atmosphere::before {
+  background:
+    radial-gradient(ellipse at 66% 7%, var(--theme-halo), transparent 49%),
+    radial-gradient(ellipse at 96% 61%, var(--theme-halo-near), transparent 41%),
+    radial-gradient(ellipse at 15% 88%, var(--theme-halo-near), transparent 38%);
+}
+
+.theme-atmosphere::after {
+  background-image:
+    radial-gradient(circle at 15% 25%, var(--theme-particle) 0 1px, transparent 2px),
+    radial-gradient(circle at 65% 48%, var(--theme-particle) 0 1px, transparent 2px),
+    radial-gradient(circle at 39% 80%, var(--theme-particle) 0 1px, transparent 2px);
+  background-size: 177px 197px, 307px 239px, 221px 321px;
+  background-position: 0 0, 51px 43px, 97px 117px;
+  opacity: .48;
+}
+
+.nexus[data-motion="animated"] .theme-atmosphere::before {
+  animation: theme-hue-drift 96s ease-in-out infinite;
+}
+
+.nexus[data-motion="animated"] .theme-atmosphere::after {
+  animation: theme-particle-drift 80s ease-in-out infinite;
+}
+
+@keyframes theme-hue-drift {
+  0%, 100% { filter: hue-rotate(-7deg); transform: translate3d(0, 0, 0); }
+  50% { filter: hue-rotate(7deg); transform: translate3d(2%, -2%, 0); }
+}
+
+@keyframes theme-particle-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(18px, -24px, 0); }
+}
+
+.nexus[data-palette] :is(.sidebar, .glass-main > header, .panel, .service, .stat, .hero) {
+  background:
+    linear-gradient(150deg, var(--theme-glint), transparent 37%),
+    linear-gradient(135deg, var(--theme-panel), var(--theme-panel-deep));
+  border-color: var(--theme-edge);
+  box-shadow: inset 0 1px 0 var(--theme-glint), inset 0 -1px 0 var(--theme-edge), var(--glass-shadow);
+}
+
+.nexus[data-palette] :is(.sidebar, .glass-main > header, .hero) {
+  backdrop-filter: blur(16px);
+}
+
+.nexus.light[data-palette] .hero { color: var(--glass-ink); }
+.nexus.light[data-palette] .hero p { color: var(--glass-muted); }
+
+.nexus[data-palette] :is(.nav.active, .nav:hover, .switch) {
+  background: var(--glass-control);
+}
+
+.nexus[data-palette] .nav.active {
+  color: var(--glass-accent);
+  box-shadow: inset 3px 0 var(--glass-accent);
+}
+
+.nexus[data-palette] .switch { border-color: var(--theme-edge); }
+.nexus[data-palette] .switch button { color: var(--glass-ink); }
+.nexus[data-palette] .switch button.selected {
+  background: hsl(var(--theme-hue) 48% 34%);
+  color: white;
+}
+.nexus[data-palette] :is(button, a, input, select, textarea):focus-visible { outline-color: var(--glass-accent); }
+
+.theme-settings {
+  display: grid;
+  gap: 22px;
+  max-width: 730px;
+}
+
+.theme-settings fieldset { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+.theme-settings legend { padding: 0; margin-bottom: 12px; font-weight: 700; }
+.theme-palettes { display: grid; grid-template-columns: repeat(auto-fit, minmax(105px, 1fr)); gap: 10px; }
+.theme-palette, .theme-modes label, .theme-motion { display: flex; align-items: center; gap: 8px; }
+.theme-palette {
+  min-height: 52px;
+  padding: 10px;
+  border: 1px solid var(--theme-edge);
+  border-radius: 10px;
+  background: var(--glass-control);
+}
+
+.theme-palette:has(input:checked) { border-color: currentColor; }
+.theme-settings input { accent-color: var(--glass-accent); }
+.theme-swatch {
+  inline-size: 17px;
+  block-size: 17px;
+  flex: 0 0 17px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 33% 25%, #fff9, transparent 48%), currentColor;
+}
+
+.theme-modes { display: flex; flex-wrap: wrap; gap: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nexus[data-motion="animated"] .theme-atmosphere::before,
+  .nexus[data-motion="animated"] .theme-atmosphere::after { animation: none; }
+}

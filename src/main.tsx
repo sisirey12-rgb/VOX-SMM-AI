@@ -24,6 +24,7 @@ import { Workspace } from "./Workspace";
 import { Orders } from "./Orders";
 import { db } from "./catalogue";
 import { Services } from "./Services";
+import { Bundles } from "./Bundles";
 import { Account, useAccount } from "./Account";
 import { Landing } from "./Landing";
 import { GlassDialog, PageSearch } from "./UltraGlass";
@@ -33,6 +34,7 @@ type Role = "customer" | "admin";
 const customer = [
   ["Overview", LayoutDashboard],
   ["Service Catalogue", Layers],
+  ["Smart Bundles", Layers],
   ["New Campaign", ShoppingCart],
   ["My Orders", Layers],
   ["Wallet", Wallet],
@@ -48,6 +50,7 @@ const admin = [
   ["Overview", LayoutDashboard],
   ["Orders", ShoppingCart],
   ["Services", Layers],
+  ["Smart Bundles", Layers],
   ["Customers", Users],
   ["Providers", Shield],
   ["Reseller keys", Shield],
@@ -346,6 +349,8 @@ function App() {
             <Rules key={page} schedule={page === "Schedule limits"} />
           ) : page === "Account" || page === "Settings" ? (
             <Account key={`${register}/${userId ?? "guest"}`} session={session} register={register} role={accountRole} wallet={() => { setRole("customer"); navigate("Wallet"); }} onSignedIn={() => navigate("Overview")} />
+          ) : page === "Smart Bundles" ? (
+            <Bundles key={role + '/' + (userId ?? '')} manage={role === "admin"} user={userId} />
           ) : page === "Service Catalogue" ||
             page === "New Campaign" ||
             (role === "admin" && ["Services", "Providers"].includes(page)) ? (

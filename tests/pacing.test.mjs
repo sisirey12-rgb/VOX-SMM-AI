@@ -207,6 +207,74 @@ test("paced quotes, bookings, funding and dispatch spacing", async () => {
       +new Date(fixed.rows[1].due_at) - new Date(fixed.rows[0].due_at),
       30 * 60000,
     );
+    // A bundle uses distinct services, one funded booking, and a shared start.
+    await pg.exec("reset role");
+    const buyer = crypto.randomUUID();
+    await pg.query("insert into auth.users values($1)", [buyer]);
+    await pg.exec(`
+      insert into voxx_private.services(source,id,name,category,kind,cost,minimum,maximum,refill,cancel,visible)
+        values('live',6,'Second action','Video action','Default',80,5,200,false,false,true);
+      insert into voxx_schedule_rules
+        values(6,3,120,150,2,'Verified fixture for independent orders',now());
+      insert into voxx_bundle_categories values('Marketing','youtube'),('Video action','twitch');
+    `);
+    await as(admin);
+    const bundle = crypto.randomUUID();
+    const components = JSON.stringify([
+      { service_id: 5, quantity: 100 },
+      { service_id: 6, quantity: 120 },
+    ]);
+    const saveBundle = () => pg.query(
+      "insert into voxx_bundles(id,name,platform,components) values($1,'Video bundle','youtube',$2)",
+      [bundle, components],
+    );
+    await assert.rejects(saveBundle(), /same platform/);
+    await pg.exec("update voxx_bundle_categories set platform='youtube' where category='Video action'");
+    await saveBundle();
+    await as(buyer);
+    const bundleSeed = crypto.randomUUID();
+    const { rows: [{ q: bundleQuote }] } = await pg.query(
+      "select voxx_bundle_quote($1,'slow',null,$2) q", [bundle, bundleSeed],
+    );
+    assert.equal(bundleQuote.parts.length, 2);
+    assert.equal(bundleQuote.total, bundleQuote.parts.reduce((total, part) => total + part.plan.total, 0));
+    assert.ok(bundleQuote.parts.every((part) => part.plan.batches[0].offset === 0));
+    const bookBundle = () => pg.query(
+      "select voxx_book_bundle($1,$2,'https://example.org/video',$3,$4) id",
+      [bundle, bundleSeed, start, JSON.stringify(bundleQuote)],
+    );
+    await assert.rejects(bookBundle(), /Insufficient available live wallet balance/);
+    assert.equal((await pg.query("select * from voxx_campaigns")).rows.length, 0);
+    await pg.exec("reset role");
+    await pg.query(
+      "insert into voxx_ledger(owner_id,reference,mode,paise) values($1,'bundle-funded','live',$2)",
+      [buyer, Math.round(bundleQuote.total * 100)],
+    );
+    await as(buyer);
+    assert.equal((await bookBundle()).rows[0].id, bundleSeed);
+    assert.equal((await bookBundle()).rows[0].id, bundleSeed);
+    const children = (await pg.query(
+      "select start_at, state from voxx_campaigns where bundle_booking_id=$1", [bundleSeed],
+    )).rows;
+    assert.equal(children.length, 2);
+    const history = (await pg.query("select * from voxx_my_bundles()")).rows;
+    assert.equal(history[0].id, bundleSeed);
+    assert.equal(history[0].components.length, 2);
+    await as(user);
+    assert.equal((await pg.query("select * from voxx_my_bundles()")).rows.length, 0);
+    assert.ok(children.every((row) => +new Date(row.start_at) === +new Date(start) && row.state === "Active"));
+    await pg.exec("reset role");
+    await pg.query(
+      "update voxx_orders set due_at=due_at-interval '2 days' where campaign_id in (select id from voxx_campaigns where bundle_booking_id=$1)",
+      [bundleSeed],
+    );
+    assert.equal((await pg.query("select * from voxx_due_batches() where bundle_id=$1", [bundleSeed])).rows.length, 2);
+    await pg.exec("update voxx_private.services set visible=false where source='live' and id=6");
+    await as(buyer);
+    await assert.rejects(
+      pg.query("select voxx_bundle_quote($1,'slow',null,$2)", [bundle, crypto.randomUUID()]),
+      /no longer available/,
+    );
   } finally {
     await pg.close();
   }

@@ -176,15 +176,19 @@ export async function poll() {
 export async function dueCampaigns() {
   if (process.env.VOXX_ORDER_DISPATCH !== "true") return { attempted: 0 };
   const db = database(),
-    r = await db.rpc("voxx_due");
+    r = await db.rpc("voxx_due_batches");
   if (r.error) throw Error("Scheduled order query failed");
-  let failures = 0;
+  const groups = new Map<string, string[]>();
   for (const row of r.data ?? []) {
-    try {
-      await dispatch(row.id);
-    } catch {
-      failures++;
-    }
+    const key = row.bundle_id ? "bundle/" + row.bundle_id : row.id;
+    const group = groups.get(key) ?? [];
+    group.push(row.id);
+    groups.set(key, group);
+  }
+  let failures = 0;
+  for (const ids of groups.values()) {
+    const results = await Promise.allSettled(ids.map((id) => dispatch(id)));
+    failures += results.filter((result) => result.status === "rejected").length;
   }
   if (failures) throw Error("Scheduled orders require review");
   return { attempted: r.data?.length ?? 0 };

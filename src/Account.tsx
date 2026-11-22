@@ -68,6 +68,22 @@ export function Account({ session }: { session: Session | null }) {
       setBusy(false);
     }
   }
+  async function signInWithGoogle() {
+    if (!db) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const { error } = await db.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/?account=google` },
+      });
+      if (!error) return;
+      setMessage(error.message);
+    } catch {
+      setMessage("Google sign-in failed. Try again.");
+    }
+    setBusy(false);
+  }
   return (
     <section className="panel form-panel catalog">
       <h3>
@@ -115,6 +131,9 @@ export function Account({ session }: { session: Session | null }) {
             }}
           >
             {signup ? "Use existing account" : "Register"}
+          </button>
+          <button type="button" disabled={busy} onClick={signInWithGoogle}>
+            Continue with Google
           </button>
         </form>
       ) : (

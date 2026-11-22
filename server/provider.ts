@@ -20,7 +20,15 @@ export class Provider {
       signal: AbortSignal.timeout(12000),
       body: new URLSearchParams({ ...fields, action, key: this.key }),
     });
-    if (!response.ok) throw Error("Provider unavailable");
+    if (!response.ok) {
+      if (action === "balance" || action === "services") {
+        console.error("SMMXPERT catalogue HTTP error", {
+          action,
+          status: response.status,
+        });
+      }
+      throw Error("Provider unavailable");
+    }
     const result = await response.json();
     if (
       action === "add" &&

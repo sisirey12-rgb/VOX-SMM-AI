@@ -322,7 +322,7 @@ export function Workspace({ page, user }: { page: string; user: string }) {
       {!loaded && db && user ? (
         <Loading label="Loading records" />
       ) : rows.length === 0 ? (
-        <p>No records to display.</p>
+        <p>{page === "Support" ? "No support tickets yet. Send a request above if you need help with an order or your account." : "No records to display."}</p>
       ) : (
         <RecordTable rows={rows} title={page} />
       )}

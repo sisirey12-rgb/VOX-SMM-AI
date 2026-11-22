@@ -19,11 +19,13 @@ export function Loading({ label }: { label: string }) {
 export function GlassDialog({
   trigger,
   triggerLabel,
+  onOpen,
   title,
   children,
 }: {
   trigger: ReactNode;
   triggerLabel?: string;
+  onOpen?: () => void;
   title: string;
   children: (close: () => void) => ReactNode;
 }) {
@@ -31,7 +33,7 @@ export function GlassDialog({
   const close = () => dialog.current?.close();
   return (
     <>
-      <button type="button" className="glass-action" aria-label={triggerLabel} onClick={() => dialog.current?.showModal()}>{trigger}</button>
+      <button type="button" className="glass-action" aria-label={triggerLabel} onClick={() => { dialog.current?.showModal(); onOpen?.(); }}>{trigger}</button>
       <dialog className="glass-dialog" aria-label={title} ref={dialog}>
         <div className="glass-dialog-header">
           <h2>{title}</h2>

@@ -12,5 +12,6 @@
   </defs>
   <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#body)" stroke="#9478d0" stroke-width="2"/>
   <path d="M12 18h11l9 22 9-22h11L36 49h-8z" fill="url(#beam)"/>
+  <path d="M12 18h11l9 22-4 9z" fill="#e8c7ff" opacity=".55"/>
   <path d="M44 18h8l-5 9h-7z" fill="#d3faff" opacity=".78"/>
 </svg>

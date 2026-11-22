@@ -12,7 +12,6 @@ import {
   Menu,
   X,
   ArrowUpRight,
-  Bell,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -29,6 +28,7 @@ import { Account, useAccount } from "./Account";
 import { Landing } from "./Landing";
 import { GlassDialog, PageSearch } from "./UltraGlass";
 import { OverviewMetrics } from "./OverviewMetrics";
+import { NotificationCenter } from "./NotificationCenter";
 type Role = "customer" | "admin";
 const customer = [
   ["Overview", LayoutDashboard],
@@ -94,6 +94,24 @@ function App() {
     ),
     [mobile, setMobile] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+  const userId = session?.user.id;
+  const previousUser = useRef(userId);
+  useEffect(() => {
+    if (previousUser.current && previousUser.current !== userId) {
+      setRole("customer");
+      setPage("Account");
+      setMobile(false);
+    }
+    previousUser.current = userId;
+  }, [userId]);
+  useEffect(() => {
+    if (!userId) return;
+    const url = new URL(location.href);
+    if (url.searchParams.get("account") !== "google") return;
+    url.searchParams.delete("account");
+    history.replaceState(history.state, "", url);
+    setPage("Overview");
+  }, [userId]);
   const mobileToggle = useRef<HTMLButtonElement>(null);
   const mobileClose = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -108,8 +126,10 @@ function App() {
       mobileToggle.current?.focus();
     };
   }, [mobile]);
-  const role = requested === "admin" && isAdmin ? "admin" : "customer";
-  const page = requested === "admin" && !isAdmin ? "Account" : requestedPage;
+  const accountChanged = !!previousUser.current && previousUser.current !== userId;
+  const role = requested === "admin" && isAdmin && !accountChanged ? "admin" : "customer";
+  const page = accountChanged || (requested === "admin" && !isAdmin) ||
+    (["Reseller", "My customers"].includes(requestedPage) && accountRole !== "reseller") ? "Account" : requestedPage;
   const nav =
     role === "admin"
       ? admin
@@ -139,6 +159,7 @@ function App() {
         browse={() => setPage("Service Catalogue")}
         signIn={() => openAccount()}
         register={() => openAccount(true)}
+        support={() => navigate("Support")}
       />
     );
   }
@@ -209,7 +230,7 @@ function App() {
           </div>
           <div className="glass-top-actions">
             <PageSearch pages={nav.map(([label]) => label)} navigate={navigate} />
-            {session && <button type="button" className="glass-action glass-bell" aria-label="View notifications" onClick={() => navigate("Notifications")}><Bell size={17} /></button>}
+            {session && <NotificationCenter key={session.user.id} userId={session.user.id} openPage={() => navigate("Notifications")} />}
             <div className="switch">
             <button
               aria-label="Switch colour theme"
@@ -276,6 +297,11 @@ function App() {
                 <img className="hero-art glass-hero-mark" src="/brand/voxx-mark.svg" alt="" />
               </div>
               {session && <OverviewMetrics key={`${session.user.id}/${role}`} user={session.user.id} admin={role === "admin"} navigate={navigate} />}
+              {session && <div className="nexus-quick-actions" aria-label="Quick actions">
+                <button type="button" className="glass-action" onClick={() => navigate(role === "admin" ? "Services" : "Service Catalogue")}><Layers size={16} aria-hidden="true" />{role === "admin" ? "Manage services" : "Browse services"}</button>
+                <button type="button" className="glass-action" onClick={() => navigate("Campaigns")}><BarChart3 size={16} aria-hidden="true" />Campaign activity</button>
+                <button type="button" className="glass-action" onClick={() => navigate("Support")}><ArrowUpRight size={16} aria-hidden="true" />Support tickets</button>
+              </div>}
               <section className="panel">
                 <div className="panel-title">
                   <h3>Recent orders</h3>
@@ -319,7 +345,7 @@ function App() {
             ["Pricing", "Schedule limits"].includes(page) ? (
             <Rules key={page} schedule={page === "Schedule limits"} />
           ) : page === "Account" || page === "Settings" ? (
-            <Account key={String(register)} session={session} register={register} />
+            <Account key={`${register}/${userId ?? "guest"}`} session={session} register={register} role={accountRole} wallet={() => { setRole("customer"); navigate("Wallet"); }} onSignedIn={() => navigate("Overview")} />
           ) : page === "Service Catalogue" ||
             page === "New Campaign" ||
             (role === "admin" && ["Services", "Providers"].includes(page)) ? (

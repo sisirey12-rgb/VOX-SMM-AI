@@ -57,7 +57,13 @@ export function RecordTable({ rows, title }: { rows: RecordRow[]; title: string 
                   ))}
                   <td>
                     <GlassDialog title={title + " record"} triggerLabel={"View record " + (index + 1)} trigger="View">
-                      {() => <dl className="glass-record-detail">{keys.map((key) => <div key={key}><dt>{key.replace(/_/g, " ")}</dt><dd>{displayValue(key, row[key])}</dd></div>)}</dl>}
+                      {() => title === "Support" ? (
+                        <section className="nexus-ticket-thread" aria-label="Ticket conversation">
+                          <header><strong>{row.subject}</strong>{row.state && <Status>{String(row.state)}</Status>}</header>
+                          <article><h3>Your request</h3><p>{row.body}</p>{row.created_at && <time dateTime={String(row.created_at)}>{new Date(String(row.created_at)).toLocaleString()}</time>}</article>
+                          {row.reply ? <article><h3>Support reply</h3><p>{row.reply}</p></article> : <p>No support reply yet.</p>}
+                        </section>
+                      ) : <dl className="glass-record-detail">{keys.map((key) => <div key={key}><dt>{key.replace(/_/g, " ")}</dt><dd>{displayValue(key, row[key])}</dd></div>)}</dl>}
                     </GlassDialog>
                   </td>
                 </tr>

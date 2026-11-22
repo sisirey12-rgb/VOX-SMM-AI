@@ -127,3 +127,33 @@
   .nexus *, .nexus *::before { animation: none !important; transition: none !important; }
   .nexus .glass-metric:hover { transform: none; }
 }
+
+.nexus .glass-top-actions > .glass-action { position: relative; }
+.nexus-unread { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--glass-accent); inset: 6px 6px auto auto; }
+.nexus-notifications { padding: 12px 16px 16px; }
+.nexus-notifications ol { list-style: none; margin: 0 0 14px; padding: 0; max-height: 42dvh; overflow: auto; overscroll-behavior: contain; }
+.nexus-notifications li { display: grid; gap: 6px; padding: 12px 4px; border-bottom: 1px solid var(--glass-border); overflow-wrap: anywhere; }
+.nexus-notifications :is(small, time) { color: var(--glass-muted); font-size: .78rem; }
+.nexus-notifications p { margin: 0; white-space: pre-wrap; }
+.nexus-notification-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.nexus .nexus-account { max-width: 695px; margin-inline: auto; }
+.nexus-account-brand { display: block; width: min(170px, 100%); height: auto; margin-bottom: 13px; }
+.nexus.light .nexus-account-brand { background: #281947; border-radius: 10px; padding: 5px; }
+.nexus-account .nexus-google { display: flex; justify-content: center; width: 100%; margin-top: 12px; }
+.nexus-profile { display: grid; gap: 13px; margin: 12px 0; }
+.nexus-profile-title, .nexus-profile-wallet { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.nexus-profile-title p, .nexus-profile-wallet p { margin: 2px 0 0; }
+.nexus-profile-wallet { justify-content: space-between; background: var(--glass-control); border: 1px solid var(--glass-border); border-radius: 10px; padding: 12px; }
+.nexus-avatar { display: grid; place-items: center; width: 49px; height: 49px; border-radius: 14px; background: linear-gradient(140deg, #e5d2ff, #a180e7); color: #24113d; font-weight: 800; }
+.nexus-profile-details { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(160px, 100%), 1fr)); gap: 8px; margin: 0; }
+.nexus-profile-details > div { background: var(--glass-control); border: 1px solid var(--glass-border); padding: 9px 11px; border-radius: 9px; }
+.nexus-profile-details dt { color: var(--glass-muted); font-size: .8rem; }
+.nexus-profile-details dd { margin: 3px 0 0; overflow-wrap: anywhere; }
+.nexus-profile details summary { cursor: pointer; }
+
+.nexus-quick-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 20px; }
+.nexus-ticket-thread { display: grid; gap: 12px; padding: 14px 16px; }
+.nexus .nexus-ticket-thread header { height: auto; padding: 0 0 8px; justify-content: space-between; gap: 8px; }
+.nexus-ticket-thread article { padding: 10px; margin: 0; border: 1px solid var(--glass-border); border-radius: 9px; background: var(--glass-control); }
+.nexus-ticket-thread p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.nexus-ticket-thread time { color: var(--glass-muted); font-size: .8rem; }

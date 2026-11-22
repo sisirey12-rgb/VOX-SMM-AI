@@ -3,6 +3,15 @@ import { ArrowUpRight, CalendarDays, Layers, Wallet } from "lucide-react";
 import { db, money } from "./catalogue";
 import { Loading } from "./UltraGlass";
 
+export async function readWalletSummary(client: NonNullable<typeof db>) {
+  const response = await fetch("/api/payment");
+  if (!response.ok) return null;
+  const { mode } = await response.json();
+  if (mode !== "test" && mode !== "live") return null;
+  const { data, error } = await client.rpc("voxx_balance", { wallet_mode: mode });
+  return error || data == null ? null : { value: money(Number(data) / 100), mode };
+}
+
 type Metrics = {
   orders: number | null;
   campaigns: number | null;
@@ -22,18 +31,10 @@ export function OverviewMetrics({ user, admin, navigate }: {
     let active = true;
     const orders = client.from("voxx_orders").select("id", { head: true, count: "exact" });
     const campaigns = client.from("voxx_campaigns").select("id", { head: true, count: "exact" }).eq("state", "Active");
-    const wallet = async () => {
-      const response = await fetch("/api/payment");
-      if (!response.ok) return null;
-      const { mode } = await response.json();
-      if (mode !== "test" && mode !== "live") return null;
-      const { data, error } = await client.rpc("voxx_balance", { wallet_mode: mode });
-      return error || data == null ? null : { value: money(Number(data) / 100), mode };
-    };
     Promise.allSettled([
       admin ? orders : orders.eq("owner_id", user),
       admin ? campaigns : campaigns.eq("owner_id", user),
-      admin ? Promise.resolve(null) : wallet(),
+      admin ? Promise.resolve(null) : readWalletSummary(client),
     ]).then(([orderResult, campaignResult, balanceResult]) => {
       if (!active) return;
       const balance = balanceResult.status === "fulfilled" ? balanceResult.value : null;

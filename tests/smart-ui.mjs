@@ -58,6 +58,7 @@ try {
             app_metadata: {},
             user_metadata: {},
             role: "authenticated",
+            created_at: new Date(0).toISOString(),
           },
         }),
       ),
@@ -81,8 +82,10 @@ try {
     if (req.method() === "HEAD")
       return route.fulfill({ headers: { "content-range": "*/0" } });
     if (action === "voxx_role") reply = accountRole;
+    if (action === "voxx_admin") reply = accountRole === "admin";
     if (action === "voxx_balance") reply = 12500;
-    if (action === "voxx_notices") reply = [{ title: "Fixture notice", body: "Ready", created_at: new Date(now * 1000).toISOString() }];
+    if (action === "voxx_notices") reply = [{ id: 1, title: "Fixture notice", body: "Ready", created_at: new Date(now * 1000).toISOString() }];
+    if (action === "voxx_profiles" && url.searchParams.get("select") === "display_name") reply = { display_name: "Fixture name" };
     if (action === "voxx_site") reply = url.searchParams.get("select") === "welcome"
       ? { welcome: "VOXX" }
       : [{ welcome: "VOXX", created_at: new Date(now * 1000).toISOString() }];
@@ -210,6 +213,13 @@ try {
   await page.goto("https://voxx.test/");
   await graph(123, 123).waitFor();
   await page.getByText("₹125", { exact: false }).first().waitFor();
+  await page.getByRole("button", { name: /Notifications, 1 unread/ }).click();
+  const notices = page.getByRole("dialog", { name: "Recent notifications" });
+  await notices.getByText("Fixture notice").waitFor();
+  const noticeBounds = await notices.boundingBox();
+  assert.ok(noticeBounds && noticeBounds.x >= 0 && noticeBounds.x + noticeBounds.width <= 390);
+  await notices.getByRole("button", { name: "Mark shown as read" }).click();
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Search pages" }).click();
   const search = page.getByRole("dialog", { name: "Find a workspace page" });
   await search.getByRole("searchbox").fill("notifications");
@@ -242,6 +252,16 @@ try {
   await page.getByRole("navigation", { name: "Workspace navigation" }).getByRole("button", { name: "Reseller", exact: true }).waitFor();
   assert.equal(await page.getByRole("button", { name: "Admin", exact: true }).count(), 0);
   const customerRoutes = await checkSidebar();
+  await page.getByRole("button", { name: "Account", exact: true }).click();
+  const account = page.getByRole("dialog", { name: "Your VOXX account" });
+  await account.getByRole("button", { name: "Account and security" }).click();
+  await page.getByRole("textbox", { name: "Display name" }).waitFor();
+  assert.equal(await page.getByRole("textbox", { name: "Display name" }).inputValue(), "Fixture name");
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
+  await page.getByRole("button", { name: "Continue with Google" }).waitFor();
+  await page.getByRole("button", { name: "Show password" }).click();
+  assert.equal(await page.getByLabel("Password", { exact: true }).getAttribute("type"), "text");
+  assert.equal(await page.getByRole("button", { name: "Admin", exact: true }).count(), 0);
   console.log(adminRoutes + " admin and " + customerRoutes + " customer/reseller pages rendered (fixture API).");
   assert.equal(providerCalls, 0);
   assert.deepEqual(errors, []);

@@ -17,7 +17,7 @@ try {
       });
     });
     await page.goto("https://voxx.test");
-    await page.getByRole("heading", { name: /Run campaigns/ }).waitFor();
+    await page.getByRole("heading", { name: /VOXX SMM.*Smart Drip-Feed/ }).waitFor();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await page.getByRole("button", { name: "Browse services" }).click();
     await page.getByRole("searchbox").fill("1001");

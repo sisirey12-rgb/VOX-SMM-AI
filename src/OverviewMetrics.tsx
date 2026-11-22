@@ -51,9 +51,7 @@ export function OverviewMetrics({ user, admin, navigate }: {
   const cards = [
     { label: "Order records", value: metrics?.orders?.toLocaleString(), icon: Layers, page: admin ? "Orders" : "My Orders" },
     { label: "Active campaigns", value: metrics?.campaigns?.toLocaleString(), icon: CalendarDays, page: "Campaigns" },
-    admin
-      ? { label: "Review settlement", value: "Wallet ledger", icon: Wallet, page: "Wallet ledger" }
-      : { label: metrics?.walletMode === "test" ? "Test wallet balance" : "Wallet balance", value: metrics?.wallet, icon: Wallet, page: "Wallet" },
+    ...(!admin ? [{ label: metrics?.walletMode === "test" ? "Test wallet balance" : "Wallet balance", value: metrics?.wallet, icon: Wallet, page: "Wallet" }] : []),
   ];
 
   return (

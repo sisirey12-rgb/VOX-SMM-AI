@@ -8,7 +8,7 @@ const views: Record<string, [string, string]> = {
   "Website settings": ["voxx_site", "welcome,created_at"],
   "Worker health": ["voxx_worker_health", "name,created_at"],
   Currency: ["voxx_fx", "currency,inr_per_unit,created_at"],
-  Notifications: ["voxx_notices", "title,body,created_at"],
+  Notifications: ["voxx_notices", "id,title,body,created_at"],
   "Sync history": ["voxx_sync_log", "imported,created_at"],
   "My customers": ["voxx_profiles", "id,display_name,role,created_at"],
   Storefronts: ["voxx_stores", "id,name,owner_id,created_at"],
@@ -56,7 +56,7 @@ async function checkout(amount: number) {
     theme: { color: "#8046ef" },
   }).open();
 }
-export function Workspace({ page, user }: { page: string; user: string }) {
+export function Workspace({ page, user, admin }: { page: string; user: string; admin: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const [mode, setMode] = useState("test");
   const [rows, show] = useState<Row[]>([]),
@@ -168,11 +168,15 @@ export function Workspace({ page, user }: { page: string; user: string }) {
           .eq("id", true);
         if (r.error) throw r.error;
       }
-      if (page === "Notifications") {
+      if (page === "Notifications" && admin) {
         const r = await db
           .from("voxx_notices")
-          .insert({ title: data.get("title"), body: data.get("body") });
+          .insert({
+            title: String(data.get("title")).trim(),
+            body: String(data.get("body")).trim(),
+          });
         if (r.error) throw r.error;
+        tell("Notification published. Customers can read it in Notifications.");
       }
       if (page === "Customers" && data.has("tier")) {
         const r = await db.rpc("voxx_assign_tier", {
@@ -227,17 +231,18 @@ export function Workspace({ page, user }: { page: string; user: string }) {
           <button disabled={busy}>Save headline</button>
         </form>
       )}
-      {page === "Notifications" && ["super_admin", "admin"].includes(role) && (
-        <form onSubmit={submit}>
+      {page === "Notifications" && admin && ["super_admin", "admin"].includes(role) && (
+        <form className="notification-composer" onSubmit={submit}>
+          <h2>Publish a customer notification</h2>
           <label>
             Title
-            <input name="title" required />
+            <input name="title" maxLength={200} required />
           </label>
           <label>
             Message
-            <textarea name="body" required />
+            <textarea name="body" rows={10} maxLength={4000} required />
           </label>
-          <button disabled={busy}>Publish notification</button>
+          <button disabled={busy}>{busy ? "Publishing…" : "Publish to customers"}</button>
         </form>
       )}
       {page === "Wallet" && (
@@ -322,7 +327,19 @@ export function Workspace({ page, user }: { page: string; user: string }) {
       {!loaded && db && user ? (
         <Loading label="Loading records" />
       ) : rows.length === 0 ? (
-        <p>{page === "Support" ? "No support tickets yet. Send a request above if you need help with an order or your account." : "No records to display."}</p>
+        <p>{page === "Support" ? "No support tickets yet. Send a request above if you need help with an order or your account." : page === "Notifications" ? "No announcements yet." : "No records to display."}</p>
+      ) : page === "Notifications" ? (
+        <ul className="notification-feed" aria-label="Published notifications">
+          {rows.map((row) => (
+            <li key={row.id}>
+              <h3>{row.title}</h3>
+              {typeof row.created_at === "string" && (
+                <time dateTime={row.created_at}>{new Date(row.created_at).toLocaleString()}</time>
+              )}
+              <p>{row.body}</p>
+            </li>
+          ))}
+        </ul>
       ) : (
         <RecordTable rows={rows} title={page} />
       )}

@@ -31,7 +31,13 @@ export function NotificationCenter({ userId, openPage }: { userId: string; openP
       }
     }
     void load();
-    return () => { active = false; };
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load();
+    }, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
   }, [userId, revision]);
 
   const unread = notices?.filter((notice) => notice.id > seen).length ?? 0;

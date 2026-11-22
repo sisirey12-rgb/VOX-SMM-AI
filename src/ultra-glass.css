@@ -54,6 +54,7 @@
 .nexus .panel { border-radius: var(--glass-radius); overflow-wrap: anywhere; }
 .nexus .panel a { color: var(--glass-accent); text-underline-offset: .2em; }
 .nexus .glass-metrics, .glass-progress-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 14px 0; }
+.nexus .glass-metrics { grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); }
 .nexus .glass-metric { text-align: left; color: var(--glass-muted); display: grid; gap: 8px; font-size: .82rem; padding: 16px; border: 1px solid var(--glass-border); transition: transform var(--glass-motion), border-color var(--glass-motion); }
 .nexus .glass-metric:hover { transform: translateY(-2px); border-color: var(--glass-accent); }
 .nexus .glass-metric strong { color: var(--glass-ink); font-size: clamp(1rem, 2.5vw, 1.55rem); letter-spacing: -.035em; }
@@ -151,9 +152,35 @@
 .nexus-profile-details dd { margin: 3px 0 0; overflow-wrap: anywhere; }
 .nexus-profile details summary { cursor: pointer; }
 
-.nexus-quick-actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 20px; }
 .nexus-ticket-thread { display: grid; gap: 12px; padding: 14px 16px; }
 .nexus .nexus-ticket-thread header { height: auto; padding: 0 0 8px; justify-content: space-between; gap: 8px; }
 .nexus-ticket-thread article { padding: 10px; margin: 0; border: 1px solid var(--glass-border); border-radius: 9px; background: var(--glass-control); }
 .nexus-ticket-thread p { white-space: pre-wrap; overflow-wrap: anywhere; }
 .nexus-ticket-thread time { color: var(--glass-muted); font-size: .8rem; }
+
+.nexus .notification-composer {
+  display: grid;
+  gap: 14px;
+}
+.notification-composer h2 { margin: 0; font-size: 1.15rem; }
+.nexus .notification-composer label { display: grid; gap: 6px; margin: 0; }
+.nexus .notification-composer :is(input, textarea) { width: 100%; }
+.nexus .notification-composer textarea {
+  min-height: 15rem;
+  resize: vertical;
+  line-height: 1.55;
+  background: var(--glass-surface);
+  border-color: var(--glass-border);
+  color: var(--glass-ink);
+}
+.notification-composer button { justify-self: start; }
+.notification-feed { list-style: none; padding: 0; display: grid; gap: 12px; }
+.notification-feed li {
+  padding: 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  background: var(--glass-surface);
+}
+.notification-feed h3 { margin: 0 0 4px; }
+.notification-feed time { color: var(--glass-muted); font-size: .8rem; }
+.notification-feed p { margin-bottom: 0; white-space: pre-wrap; }

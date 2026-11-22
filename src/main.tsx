@@ -295,15 +295,9 @@ function App() {
             <>
               <div className="hero">
                 <div>
-                  <div className="eyebrow">WELCOME TO VOXX</div>
                   <h2>
                     {role === "admin" ? "Your business, in focus." : welcome}
                   </h2>
-                  <p>
-                    {role === "admin"
-                      ? "Monitor customers, campaigns and service operations from one dashboard."
-                      : "Manage authorized marketing campaigns in a simple, unified workspace."}
-                  </p>
                   <button
                     onClick={() =>
                       setPage(role === "admin" ? "Orders" : "New Campaign")
@@ -316,11 +310,6 @@ function App() {
                 <img className="hero-art glass-hero-mark" src="/brand/voxx-mark.svg" alt="" />
               </div>
               {session && <OverviewMetrics key={`${session.user.id}/${role}`} user={session.user.id} admin={role === "admin"} navigate={navigate} />}
-              {session && <div className="nexus-quick-actions" aria-label="Quick actions">
-                <button type="button" className="glass-action" onClick={() => navigate(role === "admin" ? "Services" : "Service Catalogue")}><Layers size={16} aria-hidden="true" />{role === "admin" ? "Manage services" : "Browse services"}</button>
-                <button type="button" className="glass-action" onClick={() => navigate("Campaigns")}><BarChart3 size={16} aria-hidden="true" />Campaign activity</button>
-                <button type="button" className="glass-action" onClick={() => navigate("Support")}><ArrowUpRight size={16} aria-hidden="true" />Support tickets</button>
-              </div>}
               <section className="panel">
                 <div className="panel-title">
                   <h3>Recent orders</h3>
@@ -380,6 +369,7 @@ function App() {
             />
           ) : (
             <Workspace
+              admin={role === "admin"}
               key={[page, session?.user.id].join("-")}
               page={page}
               user={session?.user.id ?? ""}

@@ -1,0 +1,79 @@
+[
+  {
+    "service": 1001,
+    "name": "Instagram Reel views",
+    "category": "Instagram",
+    "type": "Default",
+    "rate": "8",
+    "min": "100",
+    "max": "50000",
+    "refill": false,
+    "cancel": true
+  },
+  {
+    "service": 1002,
+    "name": "Instagram Post likes",
+    "category": "Instagram",
+    "type": "Default",
+    "rate": "36",
+    "min": "50",
+    "max": "10000",
+    "refill": true,
+    "cancel": false
+  },
+  {
+    "service": 1003,
+    "name": "YouTube Video views",
+    "category": "YouTube",
+    "type": "Default",
+    "rate": "85",
+    "min": "100",
+    "max": "10000",
+    "refill": false,
+    "cancel": false
+  },
+  {
+    "service": 1004,
+    "name": "YouTube Channel subscribers",
+    "category": "YouTube",
+    "type": "Default",
+    "rate": "240",
+    "min": "10",
+    "max": "1000",
+    "refill": false,
+    "cancel": false
+  },
+  {
+    "service": 1005,
+    "name": "Facebook Page followers",
+    "category": "Facebook",
+    "type": "Default",
+    "rate": "60",
+    "min": "50",
+    "max": "5000",
+    "refill": false,
+    "cancel": false
+  },
+  {
+    "service": 1006,
+    "name": "Telegram Channel post views",
+    "category": "Telegram",
+    "type": "Default",
+    "rate": "12",
+    "min": "100",
+    "max": "25000",
+    "refill": false,
+    "cancel": false
+  },
+  {
+    "service": 1007,
+    "name": "TikTok Video likes",
+    "category": "TikTok",
+    "type": "Default",
+    "rate": "45",
+    "min": "50",
+    "max": "5000",
+    "refill": false,
+    "cancel": false
+  }
+]

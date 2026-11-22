@@ -1,0 +1,11 @@
+{
+  "name": "voxx-worker",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "bullmq": "^5.58.0"
+  },
+  "scripts": {
+    "start": "node --experimental-strip-types index.ts"
+  }
+}

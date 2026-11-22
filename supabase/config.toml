@@ -1,0 +1,4 @@
+project_id = "voxx"
+[functions.smmxpert-sync]
+verify_jwt = false
+

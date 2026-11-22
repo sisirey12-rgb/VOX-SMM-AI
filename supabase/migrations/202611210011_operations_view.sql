@@ -1,0 +1,37 @@
+begin;
+create table public.voxx_fx(currency text primary key check(currency~'^[A-Z]{3}$'),inr_per_unit numeric not null check(inr_per_unit>0 and inr_per_unit<1000000),created_at timestamptz not null default now(),check(currency<>'INR' or inr_per_unit=1));
+insert into public.voxx_fx values('INR',1,now());
+alter table public.voxx_fx enable row level security;
+revoke all on public.voxx_fx from public,anon,authenticated;
+grant select,insert,update on public.voxx_fx to authenticated;
+create policy fx_admin on public.voxx_fx for all to authenticated using(public.voxx_admin()) with check(public.voxx_admin());
+alter table voxx_private.services add column provider_currency text,add column provider_rate numeric;
+create table public.voxx_worker_health(name text primary key,created_at timestamptz not null default now());
+alter table public.voxx_worker_health enable row level security;
+revoke all on public.voxx_worker_health from public,anon,authenticated;
+grant select on public.voxx_worker_health to authenticated;
+grant select,insert,update on public.voxx_worker_health to service_role;
+create policy worker_admin on public.voxx_worker_health for select to authenticated using(public.voxx_admin());
+create table public.voxx_site(id boolean primary key default true check(id),welcome text not null check(length(welcome) between 1 and 100),created_at timestamptz default now());
+insert into public.voxx_site(welcome) values('Grow your brand with clarity.');
+alter table public.voxx_site enable row level security;
+revoke all on public.voxx_site from public,anon,authenticated;
+grant select on public.voxx_site to anon,authenticated;
+grant update(welcome) on public.voxx_site to authenticated;
+create policy site_public on public.voxx_site for select using(true);
+create policy site_admin on public.voxx_site for update to authenticated using(public.voxx_admin()) with check(public.voxx_admin());
+create function public.voxx_import(rows jsonb,currency_code text) returns void language plpgsql security definer set search_path='' as $$
+declare conversion numeric;converted jsonb;
+begin
+ perform 1 from voxx_private.settings for update;
+ select inr_per_unit into strict conversion from public.voxx_fx where currency=currency_code for share;
+ select jsonb_agg(r||jsonb_build_object('rate',round((r->>'rate')::numeric*conversion,8))) into converted from jsonb_array_elements(rows) r;
+ perform public.voxx_publish(converted);
+ update voxx_private.services s set provider_rate=(r->>'rate')::numeric,provider_currency=currency_code from jsonb_array_elements(rows) r where s.source='live' and s.id=(r->>'service')::bigint;
+end $$;
+revoke all on function public.voxx_import(jsonb,text) from public,anon,authenticated;
+grant execute on function public.voxx_import(jsonb,text) to service_role;
+create trigger audit_cost after update of cost on voxx_private.services for each row when (old.cost is distinct from new.cost) execute function voxx_private.audit_change();
+create trigger audit_markup after update of markup on voxx_private.settings for each row execute function voxx_private.audit_change();
+create trigger audit_fx after insert or update on public.voxx_fx for each row execute function voxx_private.audit_change();
+commit;

@@ -1,6 +1,25 @@
 node_modules/
-.vercel/
+dist/
 .env
 .env.*
 !.env.example
-.DS_Store
+supabase/.temp/
+
+
+# Local secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies and generated files
+node_modules/
+dist/
+build/
+.next/
+coverage/
+.venv/
